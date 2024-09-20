@@ -14,6 +14,14 @@ const marginLeft = 120;
 const innerLeft = 40;
 const innerTop = 40;
 
+// test path coordinates
+const house1 = [
+  { year: 2003, category: "KACHHA HOUSE" },
+  { year: 2009, category: "PAKKA HOUSE" },
+  { year: 2010, category: "TOILET" },
+  { year: 2013, category: "OWNERSHIP" },
+];
+
 // y-axis define
 const yAxisDef = {
   occupancy: [
@@ -136,11 +144,16 @@ svg.append("g")
 // make the dot grid
 const data = years.flatMap( year => {
   return yAxisCat.flatMap( cat => {
-    return d3.range( 4 ).map(index => ({
-      year: year,
-      category: cat,
-      index: index
-    }));
+    if( !cat.startsWith("_spacer") ) {
+      return d3.range( 4 ).map(index => ({
+        year: year,
+        category: cat,
+        index: index
+      }));
+
+    } else {
+      return [];
+    }
   })
 });
 
@@ -151,11 +164,24 @@ svg.selectAll(".dot")
   .enter().append("circle")
   .attr("class", "dot")
   .attr("cx", d => xScale(d.year) + dotScale(d.index) + 12)
-  .attr("cy", d => yScale( d.category ) )
+  .attr("cy", d => yScale( d.category ) + 10 )
   .attr("r", 3)
   .style("fill", "white")
   .style("stroke", "grey")
-  
+
+// make the line
+const line = d3.line()
+  .x(d => xScale( d.year ) + 5 )
+  .y(d => yScale( d.category ) + 10 )
+  .curve( d3.curveLinear);
+
+// draw the line
+svg.append("path")
+  .datum( house1 )
+  .attr("fill", "none")
+  .attr("stroke", "black")
+  .attr("stroke-width", 2)
+  .attr("d", line);
 
 // Append the SVG element.
 container.append( svg.node() );

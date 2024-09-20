@@ -1,10 +1,13 @@
 
-
+.body {
+  background-color: gray;
+}
 .hovered {
   fill: rgb(255, 51, 0);
   cursor: pointer;
 }
 
 #graph-contain {
+  background-color: #bcbcd7;
   width: 100vw;
 }
