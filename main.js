@@ -1,149 +1,161 @@
 import * as d3 from "d3";
 
+// get the graph container from webflow
 const container = document.getElementById('graph-contain');
 
+// variables
 // Declare the chart dimensions and margins.
-const width = 800;
-const height = 1400;
-const marginTop = 180;
+const width = 1800;
+const height = 800;
+const marginTop = 100;
 const marginRight = 20;
-const marginBottom = 30;
-const marginLeft = 40;
-const innerLeft = 30;
+const marginBottom = 50;
+const marginLeft = 120;
+const innerLeft = 40;
 const innerTop = 40;
 
-const numCols = 12;
-const numRows = 11;
-
-
-// x-axis define
-const xAxisDef = {
-  planning: [
-    "NA CONVERSION",
-    "PURCHASING OF LAND",
-    "SURVEY",
-    "VERIFICATION",
-    "PLAN MAKING",
-    "PLAN APPROVAL",
-    "PLAN VERIFICATION",
-  ],
-  infastructure: [
-    "ELECTRICITY",
-    "SEWAGE",
-    "DRAINAGE",
-    "TOILET",
-    "WATER SUPPLY",
-    "PUBLIC SPACES",
+// y-axis define
+const yAxisDef = {
+  occupancy: [
+    "FREE RENTAL",
+    "SUB RENTAL",
+    "RENTAL",
+    "OWNERSHIP",
   ],
   building: [
-    "KACHHA HOUSE",
-    "PAKKA HOUSE",
+    "RETROFIT",
     "EXTENSIONS",
-    "RETROFITS",
+    "PAKKA HOUSE",
+    "KACHHA HOUSE",
   ],
-  occupancy: [
-    "OWNERSHIP",
-    "RENTAL",
-    "PART RENTAL"
-  ]
+  infastructure: [
+    "PUBLIC SPACES",
+    "BOREWELL/WATER SUPPLY",
+    "TOILET",
+    "DRAINAGE",
+    "SEWAGE",
+    "ELECTRICITY",
+  ],
+  planning: [
+    "PLAN VERIFICATION",
+    "PLAN APPROVAL",
+    "PLAN MAKING",
+    "VERIFICATION",
+    "SURVEY",
+    "PURCHASING OF LAND",
+    "STAY ORDER",
+    "DEMOLITION",
+    "NA CONVERSION",
+  ],
 }
-
-// y axis range define
-const dateRange = d3.timeMonths( new Date("2002-01-01"), new Date("2024-01-01"), 6);
-
-const xAxisCat = [
-  ...xAxisDef.planning, 
-  ...xAxisDef.infastructure, 
-  ...xAxisDef.building, 
-  ...xAxisDef.occupancy
+const years = [
+  2003,
+  2004,
+  2005,
+  2006,
+  2007,
+  2008,
+  2009,
+  2010,
+  2011,
+  2012,
+  2013,
+  2014,
+  2015,
+  2016,
+  2017,
+  2018,
+  2019,
+  2020,
+  2021,
+  2022,
+  2023,
+  2024,
 ]
 
-// test path coordinates
-const house1 = [
-  { date: new Date("2005-01-01"), category: "KACHHA HOUSE" },
-  { date: new Date("2010-01-01"), category: "PAKKA HOUSE" },
-  { date: new Date("2015-01-01"), category: "TOILET" },
-  { date: new Date("2020-01-01"), category: "OWNERSHIP" },
-];
+const yAxisCat = [
+  ...yAxisDef.occupancy, 
+  "_spacer1",
+  ...yAxisDef.building, 
+  "_spacer2",
+  ...yAxisDef.infastructure, 
+  "_spacer3",
+  ...yAxisDef.planning,
+]
 
+// x axis range define in years
+const dateRange = d3.timeMonths( new Date("2003-01-01"), new Date("2024-01-01"), 4);
 
-// make a planning x axis
-const x = d3.scaleBand()
-  .domain( xAxisCat )
-  .range( [0, width] )
+// Declare the x scale.
+const xScale = d3.scaleBand()
+  .domain( years )
+  .range( [ marginLeft + innerLeft, width - innerLeft])
+  .padding( 0.3 );
+
+// scale fo the dots
+const dotScale = d3.scaleBand()
+  .domain( d3.range( 4 ) )
+  .range( [0, xScale.bandwidth() ] )
+  .padding( -0.5   );
+
+// declare the y axis
+const yScale = d3.scaleBand()
+  .domain( yAxisCat )
+  .range( [marginTop, height - marginBottom] )
   .padding( 0.1 )
 
-// Declare the y (horizontal position) scale.
-const y = d3.scaleUtc()
-  .domain([new Date("2002-01-01"), new Date("2024-01-01")])
-  .range([ marginLeft, height]);
+const yAxis = d3.axisLeft( yScale )
+  .tickSize( 0 )
+  .tickPadding( 10 )
+  .tickFormat(function(d) {
+    // Hide the placeholders by returning an empty string for them
+    return d.startsWith("_spacer") ? "" : d;
+  });
 
-// Create the SVG container.
+const xAxis = d3.axisBottom( xScale )
+  .tickSize( 0 )
+  .tickPadding( 15 )
+
+// Create the SVG container
 const svg = d3.create("svg")
-    .attr("width", width)
-    .attr("height", height);
+  .attr("width", width)
+  .attr("height", height);
 
-// Add the x-axis.
+// add the X axis
 svg.append("g")
-  .attr("transform", `translate(${ marginLeft + innerLeft }, ${ marginTop })`)
-  .call( d3.axisTop(x) )
   .attr("class", "xAxis")
-  .selectAll("path, line")
-  .style("display", "none")
+  .attr("transform", `translate(0, ${ height - marginBottom})`)
+  .call( xAxis )
 
-// style the x axis
-svg.selectAll(".xAxis text")
-  .style("text-anchor", "start") // Center-align text
-  .attr("transform", "rotate(-90)") // Rotate labels 90 degrees
-  .attr("y", 0) // Move labels to the left to align correctly
-  .attr("x", 0) // Adjust horizontal positioning
-  .style("font-size", "10px")
-
-// Add the y-axis.
+// add the Y axis
 svg.append("g")
-  .attr("transform", `translate(${marginLeft},${marginTop + innerTop})`)
-  .call( d3.axisLeft(y))
   .attr("class", "yAxis")
-  .selectAll("path, line")
-  .style("display", "none")
-
+  .attr("transform", `translate(${ marginLeft + innerLeft }, ${ 0 })`)
+  .call( yAxis );
 
 // make the dot grid
-const data = xAxisCat.flatMap(cat => {
-  return dateRange.map(date => ({
-    category: cat,
-    date: date
-  }));
+const data = years.flatMap( year => {
+  return yAxisCat.flatMap( cat => {
+    return d3.range( 4 ).map(index => ({
+      year: year,
+      category: cat,
+      index: index
+    }));
+  })
 });
+
+console.log("data", data)
 
 svg.selectAll(".dot")
   .data( data )
   .enter().append("circle")
   .attr("class", "dot")
-  .attr("cx", d => x(d.category) + marginLeft + 15 + innerLeft)
-  .attr("cy", d => y(d.date) + marginTop + innerTop)
-  .attr("r", 6)
-  .style("fill", "none")
+  .attr("cx", d => xScale(d.year) + dotScale(d.index) + 12)
+  .attr("cy", d => yScale( d.category ) )
+  .attr("r", 3)
+  .style("fill", "white")
   .style("stroke", "grey")
-
-
-
-// make the line
-const line = d3.line()
-  .x(d => x(d.category) + marginLeft + 15 + innerLeft)
-  .y(d => y(d.date) + marginTop + innerTop)
-  .curve( d3.curveLinear);
-
-// draw the line
-svg.append("path")
-  .datum( house1 )
-  .attr("fill", "none")
-  .attr("stroke", "black")
-  .attr("stroke-width", 2)
-  .attr("d", line);
-
+  
 
 // Append the SVG element.
 container.append( svg.node() );
-
-
