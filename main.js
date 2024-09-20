@@ -2,6 +2,9 @@ import * as d3 from "d3";
 
 // get the graph container from webflow
 const container = document.getElementById('graph-contain');
+const graphItems = document.querySelectorAll('.graph-items');
+
+console.log("graphitems", graphItems);
 
 // variables
 // Declare the chart dimensions and margins.
@@ -15,6 +18,31 @@ const innerLeft = 40;
 const innerTop = 40;
 
 // test path coordinates
+// make a data object
+const theHouses = [] 
+
+graphItems.forEach( ( item ) => {
+  // make an empty object
+  const dataObj = {};
+  // get the list xy text
+  const list = item.getAttribute('data-listxy');
+  // convert into an array and make upper case for matching
+  const listArray = list.split(", ");
+  // make an array for the xy coords
+  const xyCoords = []
+  // iterate through the array
+  for( let i=0; i < listArray.length / 2; i++) {
+    const iter = i * 2;
+    xyCoords.push(
+      {year: parseInt( listArray[ iter ] ), category: listArray[ iter+1 ].toUpperCase() } 
+    ); 
+  }
+  dataObj.listxy = xyCoords;
+
+  theHouses.push( dataObj );
+  console.log("wow", theHouses)
+});
+
 const house1 = [
   { year: 2003, category: "KACHHA HOUSE" },
   { year: 2009, category: "PAKKA HOUSE" },
@@ -175,9 +203,11 @@ const line = d3.line()
   .y(d => yScale( d.category ) + 10 )
   .curve( d3.curveLinear);
 
+console.log("theHOUSEWS", theHouses[0].listxy, house1)
 // draw the line
 svg.append("path")
-  .datum( house1 )
+  .datum( theHouses[0].listxy )
+  // .datum( house1 )
   .attr("fill", "none")
   .attr("stroke", "black")
   .attr("stroke-width", 2)
