@@ -24,6 +24,7 @@ const theHouses = []
 graphItems.forEach( ( item ) => {
   // make an empty object
   const dataObj = {};
+  
   // get the list xy text
   const list = item.getAttribute('data-listxy');
   // convert into an array and make upper case for matching
@@ -39,16 +40,14 @@ graphItems.forEach( ( item ) => {
   }
   dataObj.listxy = xyCoords;
 
+  // get the title
+  dataObj.name = item.getAttribute('data-name');
+
+
   theHouses.push( dataObj );
   console.log("wow", theHouses)
 });
 
-const house1 = [
-  { year: 2003, category: "KACHHA HOUSE" },
-  { year: 2009, category: "PAKKA HOUSE" },
-  { year: 2010, category: "TOILET" },
-  { year: 2013, category: "OWNERSHIP" },
-];
 
 // y-axis define
 const yAxisDef = {
@@ -119,9 +118,6 @@ const yAxisCat = [
   ...yAxisDef.planning,
 ]
 
-// x axis range define in years
-const dateRange = d3.timeMonths( new Date("2003-01-01"), new Date("2024-01-01"), 4);
-
 // Declare the x scale.
 const xScale = d3.scaleBand()
   .domain( years )
@@ -169,7 +165,7 @@ svg.append("g")
   .attr("transform", `translate(${ marginLeft + innerLeft }, ${ 0 })`)
   .call( yAxis );
 
-// make the dot grid
+// make the dot grid data
 const data = years.flatMap( year => {
   return yAxisCat.flatMap( cat => {
     if( !cat.startsWith("_spacer") ) {
@@ -203,15 +199,43 @@ const line = d3.line()
   .y(d => yScale( d.category ) + 10 )
   .curve( d3.curveLinear);
 
-console.log("theHOUSEWS", theHouses[0].listxy, house1)
-// draw the line
-svg.append("path")
-  .datum( theHouses[0].listxy )
-  // .datum( house1 )
-  .attr("fill", "none")
-  .attr("stroke", "black")
-  .attr("stroke-width", 2)
-  .attr("d", line);
+// zoom function
+function zoomOnItem( selectedItem ) {
+  const zoomed = years.map( y => {
+    if( y < 2006 || y > 2018 ) {
+      return
+    }
+  })
+  console.log("zzzooomm")
+}
+
+theHouses.forEach( (item) => {
+
+  // draw the line
+  svg.append("path")
+    .datum( item.listxy )
+    // .datum( house1 )
+    .attr("fill", "none")
+    .attr("stroke", "black")
+    .attr("stroke-width", 2)
+    .attr("d", line)
+    // .on('click', (event, d) => zoomOnItem( d.title ))
+  
+  // add circles to the line
+  svg.selectAll(".circles")
+    .data( item.listxy )
+    .enter()
+    .append("circle")
+    .attr("cx", d => xScale( d.year ) + 5 )
+    .attr("cy", d => yScale( d.category ) + 10 )
+    .attr("r", 8)
+    .attr("fill", "blue")
+    .on('click', (event, d) => {
+      console.log(`Circle for ${d.year} in ${d.category} clicked ${item.name}`);
+    })
+
+});
+
 
 // Append the SVG element.
 container.append( svg.node() );
