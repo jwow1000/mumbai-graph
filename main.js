@@ -1,10 +1,14 @@
+import { getData } from "./helpers/fetchData";
+import { yAxisDef, years } from "./helpers/axisData";
 import * as d3 from "d3";
+
+
+// variables
+let focusState = false;
 
 // get the graph container from webflow
 const container = document.getElementById('graph-contain');
-const graphItems = document.querySelectorAll('.graph-items');
 
-console.log("graphitems", graphItems);
 
 // variables
 // Declare the chart dimensions and margins.
@@ -17,96 +21,9 @@ const marginLeft = 120;
 const innerLeft = 40;
 const innerTop = 40;
 
-// test path coordinates
 // make a data object
-const theHouses = [] 
+const theHouses = getData();
 
-graphItems.forEach( ( item ) => {
-  // make an empty object
-  const dataObj = {};
-  
-  // get the list xy text
-  const list = item.getAttribute('data-listxy');
-  // convert into an array and make upper case for matching
-  const listArray = list.split(", ");
-  // make an array for the xy coords
-  const xyCoords = []
-  // iterate through the array
-  for( let i=0; i < listArray.length / 2; i++) {
-    const iter = i * 2;
-    xyCoords.push(
-      {year: parseInt( listArray[ iter ] ), category: listArray[ iter+1 ].toUpperCase() } 
-    ); 
-  }
-  dataObj.listxy = xyCoords;
-
-  // get the title
-  dataObj.name = item.getAttribute('data-name');
-
-
-  theHouses.push( dataObj );
-  console.log("wow", theHouses)
-});
-
-
-// y-axis define
-const yAxisDef = {
-  occupancy: [
-    "FREE RENTAL",
-    "SUB RENTAL",
-    "RENTAL",
-    "OWNERSHIP",
-  ],
-  building: [
-    "RETROFIT",
-    "EXTENSIONS",
-    "PAKKA HOUSE",
-    "KACHHA HOUSE",
-  ],
-  infastructure: [
-    "PUBLIC SPACES",
-    "BOREWELL/WATER SUPPLY",
-    "TOILET",
-    "DRAINAGE",
-    "SEWAGE",
-    "ELECTRICITY",
-  ],
-  planning: [
-    "PLAN VERIFICATION",
-    "PLAN APPROVAL",
-    "PLAN MAKING",
-    "VERIFICATION",
-    "SURVEY",
-    "PURCHASING OF LAND",
-    "STAY ORDER",
-    "DEMOLITION",
-    "NA CONVERSION",
-  ],
-}
-const years = [
-  2003,
-  2004,
-  2005,
-  2006,
-  2007,
-  2008,
-  2009,
-  2010,
-  2011,
-  2012,
-  2013,
-  2014,
-  2015,
-  2016,
-  2017,
-  2018,
-  2019,
-  2020,
-  2021,
-  2022,
-  2023,
-  2024,
-]
 
 const yAxisCat = [
   ...yAxisDef.occupancy, 
@@ -122,13 +39,20 @@ const yAxisCat = [
 const xScale = d3.scaleBand()
   .domain( years )
   .range( [ marginLeft + innerLeft, width - innerLeft])
-  .padding( 0.3 );
+
+// function to apply custom paddings
+function getYearPosition( year, targetYear, pad ) {
+  
+  const padding = (year === targetYear) ? pad : 0.3;
+  
+  return xScale( year ) + padding * xScale.bandwidth();
+}
 
 // scale fo the dots
 const dotScale = d3.scaleBand()
   .domain( d3.range( 4 ) )
-  .range( [0, xScale.bandwidth() ] )
-  .padding( -0.5   );
+  .range( [(-xScale.bandwidth() / 2) + innerLeft/2, xScale.bandwidth()/2 + innerLeft/2 ] )
+  .padding( 1  );
 
 // declare the y axis
 const yScale = d3.scaleBand()
@@ -144,29 +68,35 @@ const yAxis = d3.axisLeft( yScale )
     return d.startsWith("_spacer") ? "" : d;
   });
 
-const xAxis = d3.axisBottom( xScale )
-  .tickSize( 0 )
-  .tickPadding( 15 )
-
+  
 // Create the SVG container
 const svg = d3.create("svg")
   .attr("width", width)
   .attr("height", height);
 
-// add the X axis
-svg.append("g")
-  .attr("class", "xAxis")
-  .attr("transform", `translate(0, ${ height - marginBottom})`)
-  .call( xAxis )
+// draw the x axis function
+function drawXaxis() {
+  const xAxis = d3.axisBottom( xScale )
+    .tickSize( 0 )
+    .tickPadding( 15 )
+  
+    // add the X axis
+  svg.append("g")
+    .attr("class", "xAxis")
+    .attr("transform", `translate(0, ${ height - marginBottom })`)
+    .call( xAxis )
+
+}
+drawXaxis();
 
 // add the Y axis
 svg.append("g")
   .attr("class", "yAxis")
   .attr("transform", `translate(${ marginLeft + innerLeft }, ${ 0 })`)
-  .call( yAxis );
+  .call( yAxis )
 
 // make the dot grid data
-const data = years.flatMap( year => {
+const dotData = years.flatMap( year => {
   return yAxisCat.flatMap( cat => {
     if( !cat.startsWith("_spacer") ) {
       return d3.range( 4 ).map(index => ({
@@ -181,13 +111,14 @@ const data = years.flatMap( year => {
   })
 });
 
-console.log("data", data)
+console.log("data", dotData)
 
 svg.selectAll(".dot")
-  .data( data )
-  .enter().append("circle")
+  .data( dotData )
+  .enter()
+  .append("circle")
   .attr("class", "dot")
-  .attr("cx", d => xScale(d.year) + dotScale(d.index) + 12)
+  .attr("cx", d => getYearPosition(d.year, null, 10) + dotScale( d.index ) )
   .attr("cy", d => yScale( d.category ) + 10 )
   .attr("r", 3)
   .style("fill", "white")
@@ -195,47 +126,70 @@ svg.selectAll(".dot")
 
 // make the line
 const line = d3.line()
-  .x(d => xScale( d.year ) + 5 )
+  .x(d => getYearPosition( d.year, null, 10 ) + 5 )
   .y(d => yScale( d.category ) + 10 )
   .curve( d3.curveLinear);
 
 // zoom function
-function zoomOnItem( selectedItem ) {
-  const zoomed = years.map( y => {
-    if( y < 2006 || y > 2018 ) {
-      return
-    }
-  })
-  console.log("zzzooomm")
+function zoomOnItem(selectedItem) {
+  
+  // Redraw the x axis with transition
+  svg.select('.xAxis')
+    .transition()
+    .duration( 1000 )
+    .call( d3.axisBottom()
+      .scale( xScale )
+      .tickValues( years )
+      .tickFormat( d => d)
+    )// Update the axis with the new scale
+    .selectAll(".tick")
+    .attr( "transform", d => `translate( ${ getYearPosition(d) }, 0)`);
+
+  // Redraw the dots with transition
+  svg.selectAll('.dot')
+    .transition()
+    .duration(1000)
+    .attr('cx', d => getYearPosition(d.year, 2006, 20) + dotScale(d.index))
+
+  // Redraw the lines with transition
+  svg.selectAll('.lines')
+    .transition()
+    .duration(1000)
+    .attr("d", selectedItem);
+
+  // Redraw the circles
+  svg.selectAll('.circles')
+    .transition()
+    .duration(1000)
+    .attr("cx", d => xScale(d.year) + 5)
 }
 
-theHouses.forEach( (item) => {
-
+// Add circles with click events to trigger zoom/collapse effect
+theHouses.forEach(item => {
   // draw the line
   svg.append("path")
-    .datum( item.listxy )
-    // .datum( house1 )
+    .datum(item.listxy)
+    .attr("class", "lines")
     .attr("fill", "none")
     .attr("stroke", "black")
     .attr("stroke-width", 2)
-    .attr("d", line)
-    // .on('click', (event, d) => zoomOnItem( d.title ))
-  
+    .attr("d", line);
+
   // add circles to the line
   svg.selectAll(".circles")
-    .data( item.listxy )
+    .data(item.listxy)
     .enter()
     .append("circle")
-    .attr("cx", d => xScale( d.year ) + 5 )
-    .attr("cy", d => yScale( d.category ) + 10 )
+    .attr("class", "circles")
+    .attr("cx", d => xScale(d.year) + 5)
+    .attr("cy", d => yScale(d.category) + 10)
     .attr("r", 8)
     .attr("fill", "blue")
     .on('click', (event, d) => {
       console.log(`Circle for ${d.year} in ${d.category} clicked ${item.name}`);
-    })
-
+      zoomOnItem(item); // Trigger the zoom/collapse effect
+    });
 });
-
 
 // Append the SVG element.
 container.append( svg.node() );
