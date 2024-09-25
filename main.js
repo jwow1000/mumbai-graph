@@ -124,7 +124,7 @@ svg.selectAll("path").remove();
 // make the dot grid data
 
 
-const dotData = xPositions.flatMap( item => {
+let dotData = xPositions.flatMap( item => {
   return yAxisCat.flatMap( cat => {
     if( !cat.startsWith("_spacer") ) {
       return d3.range( 4 ).map(index => ({
@@ -153,7 +153,6 @@ svg.selectAll(".dot")
     } else {
       return d.position + (d.index * (restWidth/5) );
     }
-    // d.position + innerLeft + marginLeft 
   })
   .attr("cy", d => yScale( d.category ) + 10 )
   .attr("r", 3)
@@ -177,6 +176,35 @@ function zoomOnItem( target ) {
       .transition()
       .duration( 1000 )
       .attr( "x", d => d.position )
+
+    // update the dots
+    dotData = xPositions.flatMap( item => {
+      return yAxisCat.flatMap( cat => {
+        if( !cat.startsWith("_spacer") ) {
+          return d3.range( 4 ).map(index => ({
+            year: item.name,
+            position: item.position,
+            category: cat,
+            index: index
+          }));
+    
+        } else {
+          return [];
+        }
+      })
+    });
+    
+    svg.selectAll(".dot")
+      .data( dotData )
+      .transition()
+      .duration( 1000 )
+      .attr("cx", d => {
+        if( d.year === targetYear ) {
+          return d.position + (d.index * (bigGap/4) );
+        } else {
+          return d.position + (d.index * (restWidth/5) );
+        }
+      })
     
 
   } else {
