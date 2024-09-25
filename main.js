@@ -54,6 +54,7 @@ const restWidth = restOfGraph / (years.length - 2);
 
 // calculate xPositions function
 function calcXpos( target ) {
+  cumulativePosition = innerLeft; 
   const xData = years.map( year => {
     const pos = cumulativePosition;
     // if target year?
@@ -69,11 +70,13 @@ function calcXpos( target ) {
   return xData;
 }
 
-const xPositions = calcXpos( targetYear );
+let xPositions = calcXpos( targetYear );
 
 // draw the x axis
 const xAxis = svg.append("g")
   .attr("transform", `translate(${  marginLeft + innerLeft },${ height - marginBottom })`);
+
+
 
 xAxis.selectAll(".xLabel")
   .data( xPositions )
@@ -84,7 +87,11 @@ xAxis.selectAll(".xLabel")
     .attr("y", 15)  // Adjust this to position the label correctly
     .attr("dy", ".71em")
     .attr("text-anchor", "middle")
-    .text(d => d.name);
+    .text(d => d.name)
+    .on('click', (event, d) => {
+      console.log(`Circle for ${d.name} in ${d.position} clicked ${d.name}`);
+      zoomOnItem( d ); // Trigger the zoom/collapse effect
+    })
 
 
 // declare the y axis scale
@@ -142,9 +149,9 @@ svg.selectAll(".dot")
   .attr("class", "dot")
   .attr("cx", d => {
     if( d.year === targetYear ) {
-      return d.position + (d.index * bigGap/4);
+      return d.position + (d.index * (bigGap/4) );
     } else {
-      return d.position + (d.index * 10);
+      return d.position + (d.index * (restWidth/5) );
     }
     // d.position + innerLeft + marginLeft 
   })
@@ -153,6 +160,29 @@ svg.selectAll(".dot")
   .style("fill", "white")
   .style("stroke", "grey")
   .attr("transform", `translate(${innerLeft + marginLeft - 14},0)`)
+
+
+function zoomOnItem( target ) {
+  console.log("xPositions before click", xPositions);
+  // if were not focused ...
+  if( !focusState ) {
+    // update target year
+    targetYear = target.name;
+    xPositions = calcXpos( targetYear );
+    console.log("xPostiitons after click: ", xPositions)
+
+    // update the xAxis labels
+    xAxis.selectAll(".xLabel")
+      .data( xPositions )
+      .transition()
+      .duration( 1000 )
+      .attr( "x", d => d.position )
+    
+
+  } else {
+    focusState = false;
+  }
+}
 
 // // make the line
 // const line = d3.line()
