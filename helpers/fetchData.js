@@ -17,10 +17,10 @@ export function getData() {
     // make an array for the xy coords
     const xyCoords = []
     // iterate through the array
-    for( let i=0; i < listArray.length / 2; i++) {
-      const iter = i * 2;
+    for( let i=0; i < listArray.length / 3; i++) {
+      const iter = i * 3;
       xyCoords.push(
-        {year: parseInt( listArray[ iter ] ), category: listArray[ iter+1 ].toUpperCase() } 
+        {year: parseInt( listArray[ iter ] ), season: listArray[ iter+1 ], category: listArray[ iter+2 ].toUpperCase() } 
       ); 
     }
     dataObj.listxy = xyCoords;
@@ -30,7 +30,6 @@ export function getData() {
   
   
     theHouses.push( dataObj );
-    // console.log("wow", theHouses)
 
   });
 

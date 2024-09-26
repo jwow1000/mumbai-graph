@@ -14,7 +14,7 @@ const container = document.getElementById('graph-contain');
 // variables
 // Declare the chart dimensions and margins.
 const width = 1800;
-const height = 800;
+const height = 900;
 const marginTop = 100;
 const marginRight = 20;
 const marginBottom = 50;
@@ -24,7 +24,7 @@ const innerTop = 40;
 
 // make a data object
 const theHouses = getData();
-
+console.log("theHouses", theHouses)
 
 const yAxisCat = [
   ...yAxisDef.occupancy, 
@@ -96,7 +96,7 @@ let xPositions = calcXpos( targetYear );
 
 // draw the x axis
 const xAxis = svg.append("g")
-  .attr("transform", `translate(${  marginLeft + innerLeft },${ height - marginBottom })`);
+  .attr("transform", `translate(${  marginLeft + innerLeft +15 },${ height - marginBottom })`);
 
 
 
@@ -120,26 +120,29 @@ xAxis.selectAll(".xLabel")
 const yScale = d3.scaleBand()
   .domain( yAxisCat )
   .range( [marginTop, height - marginBottom] )
-  .padding( 0.1 )
+  .padding( 0 )
 
 const yAxis = d3.axisLeft( yScale )
   .tickSize( 0 )
-  .tickPadding( 10 )
+  .tickPadding( 0)
   .tickFormat(function(d) {
     // Hide the placeholders by returning an empty string for them
     return d.startsWith("_spacer") ? "" : d;
-  });
-
-
+  })
+;
 
 // add the Y axis
-svg.append("g")
+const yAxisGroup = svg.append("g")
   .attr("class", "yAxis")
   .attr("transform", `translate(${ marginLeft + innerLeft }, ${ 0 })`)
   .call( yAxis )
 
 // remove the axis lines
 svg.selectAll("path").remove();
+
+// style y axis labels
+yAxisGroup.selectAll("text")
+  .style("font-size", "0.8rem")
 
 let dotData = Object.values(xPositions).flatMap(item => {
   return yAxisCat.flatMap(cat => {
@@ -157,6 +160,16 @@ let dotData = Object.values(xPositions).flatMap(item => {
 });
 
 console.log("data", dotData)
+// get season group spacing
+function getSeasonSpace( item ) {
+  if( item.year === targetYear ) {
+    return bigGap / 4 ;
+  } else if( targetYear === 0 ) {
+    return defaultWidth / 5;
+  } else {
+    return restWidth / 5 ;
+  }
+}
 
 svg.selectAll(".dot")
   .data( dotData )
@@ -164,24 +177,20 @@ svg.selectAll(".dot")
   .append("circle")
   .attr("class", "dot")
   .attr("cx", d => {
-    
-    if( d.year === targetYear ) {
-      return d.position + (d.index * (bigGap/4) );
-    } else if( targetYear === 0 ) {
-      return d.position + (d.index * (defaultWidth / 5) );
-    } else {
-      return d.position + (d.index * (restWidth/5) );
-    }
+    return d.position + (d.index * getSeasonSpace( d ) );
   })
   .attr("cy", d => yScale( d.category ) + 10 )
   .attr("r", 3)
   .style("fill", "white")
   .style("stroke", "grey")
-  .attr("transform", `translate(${innerLeft + marginLeft - 14},0)`)
+  .attr("transform", `translate(${innerLeft + marginLeft},0)`)
 
 // define the line generator
 const lineGen = d3.line()
-  .x(d => xPositions[d.year].position + innerLeft + marginLeft)
+  .x(d => {
+    const seasonSpace = d.season * getSeasonSpace( d );
+    return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
+  })
   .y(d => yScale( d.category ) + 10 )
   .curve( d3.curveLinear);
 
@@ -204,7 +213,10 @@ theHouses.forEach( item => {
     .enter()
     .append("circle")
     .attr("class", `circles-${item.name}`)
-    .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft )
+    .attr("cx", d => {
+      const seasonSpace = d.season * getSeasonSpace( d );
+      return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
+    })
     .attr("cy", d => yScale(d.category) + 10)
     .attr("r", 8)
     .attr("fill", "blue")
@@ -222,7 +234,6 @@ function zoomOnItem( target ) {
     // update target year
     targetYear = target;
     xPositions = calcXpos( targetYear );
-    console.log("xPostiitons after click: ", xPositions)
 
     // update the xAxis labels
     xAxis.selectAll(".xLabel")
@@ -253,11 +264,7 @@ function zoomOnItem( target ) {
       .transition()
       .duration( 1000 )
       .attr("cx", d => {
-        if( d.year === targetYear ) {
-          return d.position + (d.index * (bigGap/4) );
-        } else {
-          return d.position + (d.index * (restWidth/5) );
-        }
+        return d.position + (d.index * getSeasonSpace( d ) );
       })
     
     // redraw the lines and dots
@@ -276,7 +283,10 @@ function zoomOnItem( target ) {
         .join( "circle" )
         .transition()
         .duration( 1000 )
-        .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft )
+        .attr("cx", d => {
+          const seasonSpace = d.season * getSeasonSpace( d );
+          return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
+        })
     });
       
 
