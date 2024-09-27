@@ -27,7 +27,18 @@ export function getData() {
   
     // get the title
     dataObj.name = item.getAttribute('data-name');
-  
+
+    // get the preview image
+    dataObj.previewImg = item.getAttribute('data-preview');
+
+    // get the focus image
+    dataObj.displayImg = item.getAttribute('data-displayImg');
+    
+    // get the preview image position
+    
+    const pos = item.getAttribute('data-preview-position');
+    const posArray = pos.split(", ");
+    dataObj.previewPos = posArray.map((item) => item / 100);
   
     theHouses.push( dataObj );
 

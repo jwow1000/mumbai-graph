@@ -48,7 +48,7 @@ const xScale = d3.scaleLinear()
 
 // Calculate the positions based on the widths
 let cumulativePosition = innerLeft;
-const bigGap = 900;
+const bigGap = 1000;
 const restOfGraph = (width - (innerLeft + marginLeft)) - bigGap;
 const restWidth = restOfGraph / (years.length - 2);
 const defaultWidth = (width - (innerLeft + marginLeft)) / years.length; 
@@ -92,14 +92,78 @@ function calcXpos( target ) {
   }
 }
 
+// calculate new positions for new target year and redraw
+function reDrawElements( target ) {
+  // update target year
+  // targetYear = target;
+  xPositions = calcXpos( target );
+
+  // update the xAxis labels
+  xAxis.selectAll(".xLabel")
+    .data( Object.values( xPositions ) )
+    .transition()
+    .duration( 1000 )
+    .attr( "x", d => d.position )
+
+  // update dot data
+  let dotData = Object.values(xPositions).flatMap(item => {
+    return yAxisCat.flatMap(cat => {
+      if (!cat.startsWith("_spacer")) {
+        return d3.range(4).map(index => ({
+          year: item.year,        // Use the year from the item
+          position: item.position, // Use the position from the item
+          category: cat,
+          index: index
+        }));
+      } else {
+        return [];
+      }
+    });
+  });
+
+  // redraw the dots
+  svg.selectAll(".dot")
+    .data( dotData )
+    .transition()
+    .duration( 1000 )
+    .attr("cx", d => {
+      return d.position + (d.index * getSeasonSpace( d ) );
+    })
+
+  /////// redraw the data items (houses)
+  // redraw the lines 
+  theHouses.forEach( item => {
+    // draw the line
+    svg.selectAll( `.lines-${item.name}` )
+      .datum( item.listxy )
+      .transition()
+      .duration( 1000 )
+      .attr("d", lineGen( item.listxy ));
+    
+  
+    // redraw the circles 
+    svg.selectAll(`.circles-${item.name}`)
+      .data( item.listxy )
+      .join( "circle" )
+      .interrupt()
+      .transition()
+      .duration( 1000 )
+      .attr("cx", d => {
+        const seasonSpace = d.season * getSeasonSpace( d );
+        return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
+      })
+  });
+
+}
+
+// calculate x positions
 let xPositions = calcXpos( targetYear );
 
-// draw the x axis
+// create the x axis
 const xAxis = svg.append("g")
   .attr("transform", `translate(${  marginLeft + innerLeft +15 },${ height - marginBottom })`);
 
-
-
+// define and draw xAxis
 xAxis.selectAll(".xLabel")
   .data( Object.values(xPositions) )
   .enter()
@@ -110,11 +174,6 @@ xAxis.selectAll(".xLabel")
     .attr("dy", ".71em")
     .attr("text-anchor", "middle")
     .text(d => d.year)
-    .on('click', (event, d) => {
-      console.log(`Circle for ${d.name} in ${d.position} clicked ${d.name}`);
-      // zoomOnItem( d ); // Trigger the zoom/collapse effect
-    })
-
 
 // declare the y axis scale
 const yScale = d3.scaleBand()
@@ -144,6 +203,7 @@ svg.selectAll("path").remove();
 yAxisGroup.selectAll("text")
   .style("font-size", "0.8rem")
 
+// create the dot data
 let dotData = Object.values(xPositions).flatMap(item => {
   return yAxisCat.flatMap(cat => {
     if (!cat.startsWith("_spacer")) {
@@ -159,7 +219,8 @@ let dotData = Object.values(xPositions).flatMap(item => {
   });
 });
 
-console.log("data", dotData)
+console.log("dotData", dotData)
+
 // get season group spacing
 function getSeasonSpace( item ) {
   if( item.year === targetYear ) {
@@ -197,6 +258,33 @@ const lineGen = d3.line()
 // draw the lines and dots from theHouses data
 theHouses.forEach( item => {
   console.log("listXY: ", item.listxy, xPositions)
+  // draw the preview
+  svg.append( "image" )
+    .attr("class", `preview-${item.name}`) 
+    .attr("x", xPositions[ item.listxy[0].year ].position + (item.previewPos[0] * width) )
+    .attr("y", item.previewPos[1] * height )
+    .attr("width", "100")
+    .attr("height", "100")
+    .attr("href", item.previewImg)
+    .attr("preserveAspectRatio", "xMidYMid meet")
+    .on("mouseover", (event) => {
+      d3.select(`.preview-${item.name}`)
+        .transition()
+        .duration( 500 )
+        .attr("width", "300")
+        .attr("height", "300")
+    })
+    .on("mouseout", (event) => {
+      d3.select(`.preview-${item.name}`)
+        .transition()
+        .duration( 500 )
+        .attr("width", "100")
+        .attr("height", "100")
+    })
+    .on('click', (event) => {
+      zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
+    })
+
   // draw the line
   svg.append( "path" )
     .datum( item.listxy )
@@ -220,80 +308,70 @@ theHouses.forEach( item => {
     .attr("cy", d => yScale(d.category) + 10)
     .attr("r", 8)
     .attr("fill", "blue")
-    .on('click', (event, d) => {
-      console.log("hey what the heck: ", item.listxy)
-      console.log(`Circle for ${d.year} in ${d.category} clicked ${item.name}`);
-      zoomOnItem( item.listxy[0].year ); // Trigger the zoom/collapse effect
-    });
+    .on('click', function(event) {
+      d3.select(this)
+        .interrupt()
+      zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
+    })
+    .on("mouseover", function(event) {
+      d3.select( this )
+      .transition()
+      .duration( 500 )
+      .attr("r", 25)
+    })
+    .on("mouseout", function(event) {
+      d3.select( this )
+      .transition()
+      .duration( 500 )
+      .attr("r", 8)
+    })
 });
 
-function zoomOnItem( target ) {
-  console.log("xPositions before click", xPositions);
+// create image element for focused story, opacity 0 on init
+svg.append("image")
+  .attr("class", "story-image")
+  .attr("x", 0)
+  .attr("y", 0)
+  .attr("width", bigGap)   //bigGap is how wide the window is when focus
+  .attr("height", height)
+  .attr("opacity", 0)
+  .attr("href", theHouses[0].displayImg )
+  .attr("pointer-events", "none")
+  .attr("preserveAspectRatio", "xMidYMid meet")
+
+function zoomOnItem( target, item ) {
+  // console.log("xPositions before click", xPositions);
   // if were not focused ...
   if( !focusState ) {
-    // update target year
-    targetYear = target;
-    xPositions = calcXpos( targetYear );
-
-    // update the xAxis labels
-    xAxis.selectAll(".xLabel")
-      .data( Object.values( xPositions ) )
+    // redraw the scene with a new targetYear
+    reDrawElements( target );
+    
+    // redraw the story image
+    svg.select(".story-image")
+      .attr("x", xPositions[target].position + innerLeft + marginLeft)     // reset to new x position
+      .attr("href", item.displayImg)
       .transition()
       .duration( 1000 )
-      .attr( "x", d => d.position )
-
-
-    let dotData = Object.values(xPositions).flatMap(item => {
-      return yAxisCat.flatMap(cat => {
-        if (!cat.startsWith("_spacer")) {
-          return d3.range(4).map(index => ({
-            year: item.year,        // Use the year from the item
-            position: item.position, // Use the position from the item
-            category: cat,
-            index: index
-          }));
-        } else {
-          return [];
-        }
-      });
-    });
-
-    // redraw the dots
-    svg.selectAll(".dot")
-      .data( dotData )
-      .transition()
-      .duration( 1000 )
-      .attr("cx", d => {
-        return d.position + (d.index * getSeasonSpace( d ) );
-      })
-    
-    // redraw the lines and dots
-    theHouses.forEach( item => {
-      // draw the line
-      svg.selectAll( `.lines-${item.name}` )
-        .datum( item.listxy )
-        .transition()
-        .duration( 1000 )
-        .attr("d", lineGen( item.listxy ));
-      
-    
-      // add circles to the line
-      svg.selectAll(`.circles-${item.name}`)
-        .data( item.listxy )
-        .join( "circle" )
-        .transition()
-        .duration( 1000 )
-        .attr("cx", d => {
-          const seasonSpace = d.season * getSeasonSpace( d );
-          return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
-        })
-    });
-      
+      .attr("opacity", 1);
+  
+    // set focus state to true
+    focusState = true;
 
   } else {
+    // redraw the scene with year 0 to return to default
+    reDrawElements( 0 );
+
+    // make the story image dissapear
+    svg.select(".story-image")
+      .transition()
+      .duration( 1000 )
+      .attr("opacity", 0);
+
+    // turn off focus state
     focusState = false;
   }
 }
+
 
 
 // Append the SVG element.
