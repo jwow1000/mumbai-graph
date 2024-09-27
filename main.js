@@ -148,6 +148,7 @@ function reDrawElements( target ) {
       .interrupt()
       .transition()
       .duration( 1000 )
+      .attr("r", 8)
       .attr("cx", d => {
         const seasonSpace = d.season * getSeasonSpace( d );
         return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
@@ -311,6 +312,9 @@ theHouses.forEach( item => {
     .on('click', function(event) {
       d3.select(this)
         .interrupt()
+        .transition()
+        .duration( 500 )
+        .attr("r", 8)
       zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
     })
     .on("mouseover", function(event) {
@@ -321,9 +325,10 @@ theHouses.forEach( item => {
     })
     .on("mouseout", function(event) {
       d3.select( this )
-      .transition()
-      .duration( 500 )
-      .attr("r", 8)
+        .interrupt()
+        .transition()
+        .duration( 500 )
+        .attr("r", 8)
     })
 });
 
