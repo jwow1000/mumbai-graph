@@ -317,19 +317,19 @@ theHouses.forEach( item => {
         .attr("r", 8)
       zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
     })
-    .on("mouseover", function(event) {
-      d3.select( this )
-      .transition()
-      .duration( 500 )
-      .attr("r", 25)
-    })
-    .on("mouseout", function(event) {
-      d3.select( this )
-        .interrupt()
-        .transition()
-        .duration( 500 )
-        .attr("r", 8)
-    })
+    // .on("mouseover", function(event) {
+    //   d3.select( this )
+    //   .transition()
+    //   .duration( 500 )
+    //   .attr("r", 25)
+    // })
+    // .on("mouseout", function(event) {
+    //   d3.select( this )
+    //     .interrupt()
+    //     .transition()
+    //     .duration( 500 )
+    //     .attr("r", 8)
+    // })
 });
 
 // create image element for focused story, opacity 0 on init
@@ -343,6 +343,9 @@ svg.append("image")
   .attr("href", theHouses[0].displayImg )
   .attr("pointer-events", "none")
   .attr("preserveAspectRatio", "xMidYMid meet")
+  .on("click", function( event ) {
+    zoomOnItem( );
+  })
 
 function zoomOnItem( target, item ) {
   // console.log("xPositions before click", xPositions);
