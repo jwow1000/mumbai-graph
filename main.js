@@ -14,7 +14,7 @@ const container = document.getElementById('graph-contain');
 
 // variables
 // Declare the chart dimensions and margins.
-const width = 1800;
+const width = 1900;
 const height = 1000;
 const marginTop = 10;
 const marginRight = 20;
