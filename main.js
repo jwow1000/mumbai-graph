@@ -114,7 +114,7 @@ function reDrawElements( target ) {
     .data( Object.values( xPositions ) )
     .transition()
     .duration( 1000 )
-    .attr( "x", d => d.position )
+    .attr( "y", d => d.position )
 
   // update dot data
   let dotData = Object.values(xPositions).flatMap(item => {
@@ -176,7 +176,7 @@ let xPositions = calcXpos( targetYear );
 
 // create the x axis
 const xAxis = svg.append("g")
-  .attr("transform", `translate(${  marginLeft + innerLeft +15 },${ height - marginBottom })`);
+  .attr("transform", `translate(${  marginLeft + innerLeft + 15 },${ height - marginBottom })`);
 
 // define and draw xAxis
 xAxis.selectAll(".xLabel")
@@ -184,11 +184,19 @@ xAxis.selectAll(".xLabel")
   .enter()
   .append("text")
     .attr("class", "xLabel")
-    .attr("x", d => d.position)
-    .attr("y", 15)  // Adjust this to position the label correctly
-    .attr("dy", ".71em")
-    .attr("text-anchor", "middle")
+    .attr("y", d => d.position)
+    .attr("x", -30)  // Adjust this to position the label correctly
+    .attr("dy", "0.71em")
+    .attr("transform", "rotate(-90)") // Rotate the label
+    .attr("text-anchor", "start") // Align text to the end of the label
+    .attr("dx", "-0.5em") // Move the label slightly to the left
+    .attr("font-size", "1.4rem")
     .text(d => d.year)
+
+// svg.selectAll(".xLabel")
+//   .enter()
+  // .attr("transform", d => `translate(${d.position}) rotate(-90)`)
+
 
 const globalYAxisPadding = 0.5;
 // declare the y axis scale
