@@ -14,18 +14,18 @@ const container = document.getElementById('graph-contain');
 
 // variables
 // Declare the chart dimensions and margins.
-const width = 1900;
-const height = 1000;
 const marginTop = 10;
-const marginRight = 20;
+const marginRight = 50;
 const marginBottom = 50;
 const marginLeft = 150;
+const width = 1900;
+const height = 1000;
 const innerLeft = 40;
 const innerTop = 40;
 
 // make a data object
 const theHouses = getData();
-console.log("theHouses", theHouses)
+// console.log("theHouses", theHouses)
 
 const yAxisCat = [
   "_spacer1",
@@ -48,18 +48,18 @@ const spacerLabels = {
 
 // Create the SVG container
 const svg = d3.create("svg")
-  .attr("width", width)
+  .attr("width", width + marginRight)
   .attr("height", height)
 
 // Declare the x scale.
 const xScale = d3.scaleLinear()
   .domain( [0, years.length] )
-  .range( [ marginLeft + innerLeft, width - innerLeft] )
+  .range( [ marginLeft + innerLeft, width - innerLeft - marginRight] )
 
 // Calculate the positions based on the widths
 let cumulativePosition = innerLeft;
-const bigGap = 1000;
-const restOfGraph = (width - (innerLeft + marginLeft)) - bigGap;
+const bigGap = 1200;
+const restOfGraph = (width - (innerLeft + marginLeft + marginRight)) - bigGap;
 const restWidth = restOfGraph / (years.length - 2);
 const defaultWidth = (width - (innerLeft + marginLeft)) / years.length; 
 
@@ -140,6 +140,7 @@ function reDrawElements( target ) {
     .attr("cx", d => {
       return d.position + (d.index * getSeasonSpace( d ) );
     })
+  
 
   /////// redraw the data items (houses)
   // redraw the lines 
@@ -152,7 +153,6 @@ function reDrawElements( target ) {
       .attr("d", lineGen( item.listxy ))
       .attr("stroke-width", 2)
     
-  
     // redraw the circles 
     svg.selectAll(`.circles-${item.name}`)
       .data( item.listxy )
@@ -193,18 +193,15 @@ xAxis.selectAll(".xLabel")
     .attr("font-size", "1.4rem")
     .text(d => d.year)
 
-// svg.selectAll(".xLabel")
-//   .enter()
-  // .attr("transform", d => `translate(${d.position}) rotate(-90)`)
-
-
 const globalYAxisPadding = 0.5;
+
 // declare the y axis scale
 const yScale = d3.scaleBand()
   .domain( yAxisCat )
   .range( [marginTop, height - marginBottom] )
   .padding( globalYAxisPadding )
 
+// make the yAxis
 const yAxis = d3.axisLeft( yScale )
   .tickSize( 0 )
   .tickPadding( 0 )
@@ -212,8 +209,8 @@ const yAxis = d3.axisLeft( yScale )
     // Hide the placeholders by returning an empty string for them
     return d.startsWith("_spacer") ? "" : d;
   })
-;
 
+// yAxis scale
 const yAxisThemeScale = d3.scaleBand()
   .domain( yAxisCat )
   .range( [marginTop, height - marginBottom] )
@@ -232,11 +229,6 @@ const yAxisLabelsGroup = svg.append("g")
   .attr("class", "yAxisLabels")
   .attr("transform", `translate(${ (marginLeft + innerLeft) - 30 }, ${ 0 })`)
   .call( yAxisLabels )
-  
-    
-  
-
-
 
 // add the Y axis
 const yAxisGroup = svg.append("g")
@@ -271,7 +263,7 @@ let dotData = Object.values(xPositions).flatMap(item => {
   });
 });
 
-console.log("dotData", dotData)
+// console.log("dotData", dotData)
 
 // get season group spacing
 function getSeasonSpace( item ) {
@@ -412,11 +404,11 @@ theHouses.forEach( item => {
   });
 
 // create image element for focused story, opacity 0 on init
-svg.append("image")
+svg.append( "image" )
   .attr("class", "story-image")
-  .attr("x", 0)
+  .attr("x", 0) // should this be the x position of the graph
   .attr("y", 0)
-  .attr("width", bigGap)   //bigGap is how wide the window is when focus
+  .attr("width", (bigGap - marginRight - marginLeft) )   //bigGap is how wide the window is when focus
   .attr("height", height)
   .attr("display", "none")
   .attr("opacity", 0)
@@ -431,7 +423,6 @@ svg.append("image")
     
 
 function closeZoom() {
-  console.log("turn off focus")
   // redraw the scene with year 0 to return to default
   reDrawElements( 0 );
 
@@ -499,7 +490,9 @@ function zoomOnItem( target, item ) {
     svg.select(".story-image")
       .attr("x", xPositions[target].position + innerLeft + marginLeft)     // reset to new x position
       .attr("href", item.displayImg)
+      .attr("width", bigGap + xPositions[target].position)
       .attr("display", "block")
+      .attr("preserveAspectRatio", "xMidYMid meet")
       .transition()
       .duration( 1000 )
       .attr("opacity", 1);
