@@ -189,6 +189,7 @@ xAxis.selectAll(".xLabel")
   .enter()
   .append("text")
     .attr("class", "xLabel")
+    .attr("class", "svg-herz")
     .attr("y", d => d.position)
     .attr("x", -30)  // Adjust this to position the label correctly
     .attr("dy", "0.71em")
