@@ -189,7 +189,7 @@ xAxis.selectAll(".xLabel")
   .enter()
   .append("text")
     .attr("class", "xLabel")
-    .attr("class", "svg-herz")
+    .attr("class", "svg-herz") // add class for webflow styling
     .attr("y", d => d.position)
     .attr("x", -30)  // Adjust this to position the label correctly
     .attr("dy", "0.71em")
@@ -233,7 +233,8 @@ const yAxisLabels = d3.axisLeft( yAxisThemeScale )
 
 const yAxisLabelsGroup = svg.append("g")
   .attr("class", "yAxisLabels")
-  .attr("transform", `translate(${ (marginLeft + innerLeft) - 30 }, ${ 0 })`)
+  .attr("transform", "translate(100,0)")
+  .attr("text-anchor", "middle")
   .call( yAxisLabels )
 
 // add the Y axis
@@ -452,7 +453,8 @@ yAxisLabelsGroup.selectAll('text')
         d3.select( this )
           .style("font-size", "1rem")
           .style("font-weight", 700)
-          .style("text-align", "left")
+          .attr("text-anchor", "middle")
+          
 
         
         // add the box
@@ -462,9 +464,9 @@ yAxisLabelsGroup.selectAll('text')
 
         d3.select( this.parentNode )  // Select the parent group of the text (tick group)
           .insert("rect", "text")     // Insert circle before the text
-          .attr("x",  -marginLeft)    // Same x position as text
+          .attr("x",  "-5.5rem")    // Same x position as text
           .attr("y",  -16)            // Same y position as text
-          .attr("width", "13rem" )  
+          .attr("width", "11rem" )  
           .attr("height", "2rem" )  
           .attr("rx", 6)  // Rounded corner radius
           .attr("ry", 6)
@@ -474,13 +476,13 @@ yAxisLabelsGroup.selectAll('text')
         
         d3.select( this.parentNode )
           .insert("line", "rect")
-          .attr("x1", "4rem")  // Starting x position
+          .attr("x1", "5.8rem")  // Starting x position
           .attr("y1", 0)  // Starting y position (same as rect)
           .attr("x2", width)  // Ending x position (adjust as needed)
           .attr("y2", 0)  // Ending y position (same as rect) 
           .style("stroke", "black")  // Color of the dashed line
           .style("stroke-width", 1)  // Width of the dashed line
-          .style("stroke-dasharray", ("3, 3")) 
+          .style("stroke-dasharray", ("5, 8")) 
       }
 
     })
