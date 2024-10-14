@@ -20,7 +20,7 @@ const marginBottom = 50;
 const marginLeft = 150;
 const width = 1900;
 const height = 1000;
-const innerLeft = 40;
+const innerLeft = 60;
 const innerTop = 40;
 
 // make a data object
@@ -156,7 +156,7 @@ function reDrawElements( target ) {
       .transition()
       .duration( 1000 )
       .attr("d", lineGen( item.listxy ))
-      .attr("stroke-width", 2)
+      .attr("stroke-width", 1)
     
     // redraw the circles 
     svg.selectAll(`.circles-${item.name}`)
@@ -250,9 +250,31 @@ svg.selectAll("path").remove();
 yAxisGroup.selectAll("text")
   .style("font-size", "0.8rem")
 
-// create the Y theme name labels
-const yAxisThemes = svg.append("g")
-  .attr("class", "yThemes")
+// add extra YAxis of dots
+// Create the new left column dot data
+const leftColumnDotData = yAxisCat
+  .filter(cat => !cat.startsWith("_spacer"))  // Exclude spacers
+  .map(cat => ({
+    category: cat,
+    cx: marginLeft + 20,  // Position the dots left of the main graph, adjust as needed
+    cy: yScale(cat) + 8   // Align the dots with the Y-axis categories
+  }));
+
+// Append circles for the left column of dots
+console.log("herz",leftColumnDotData[0].category)
+
+svg.selectAll(".left-dot")
+  .data( leftColumnDotData )
+  .enter()
+  .append("circle")
+  .attr( "id", d => `left-dot-${ d.category.replace(/\s+/g, '-')}` )
+  .attr( "class", "left-dot")
+  .attr("cx", d => d.cx)  // Use calculated x-position
+  .attr("cy", d => d.cy)  // Use calculated y-position
+  .attr("r", 10)
+  .style("fill", "white")
+  .style("stroke", "black")
+  .attr("transform", `translate(${innerLeft },0)`);
 
 // create the dot data
 let dotData = Object.values(xPositions).flatMap(item => {
@@ -291,7 +313,7 @@ svg.selectAll(".dot")
   .attr("cx", d => {
     return d.position + (d.index * getSeasonSpace( d ) );
   })
-  .attr("cy", d => yScale( d.category ) + 10 )
+  .attr("cy", d => yScale( d.category ) + 8 )
   .attr("r", 4)
   .style("fill", "white")
   .style("stroke", "grey")
@@ -324,6 +346,13 @@ theHouses.forEach( item => {
         .duration( 500 )
         .attr("width", "300")
         .attr("height", "300")
+
+      item.listxy.forEach((xy) => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition()
+          .duration(1000)
+          .style("fill", "blue") 
+      })
     })
     .on("mouseout", (event) => {
       d3.select(`.preview-${item.name}`)
@@ -331,9 +360,25 @@ theHouses.forEach( item => {
         .duration( 500 )
         .attr("width", "100")
         .attr("height", "100")
+      if( !focusState ) {
+        item.listxy.forEach((xy) => {
+          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+            .transition()
+            .duration(1000)
+            .style("fill", "white") 
+        })
+
+      }
     })
     .on('click', (event) => {
       zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
+      
+      item.listxy.forEach((xy) => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition()
+          .duration(1000)
+          .style("fill", "blue") 
+      })
     })
 
   // draw the line
@@ -342,14 +387,14 @@ theHouses.forEach( item => {
     .attr("class", `lines-${item.name}`)
     .attr("fill", "none")
     .attr("stroke", "black")
-    .attr("stroke-width", 2)
+    .attr("stroke-width", 1)
     .attr("d", lineGen( item.listxy ))
     .on('click', function(event) {
       d3.select(this)
         .interrupt()
         .transition()
         .duration( 1000 )
-        .attr("stroke-width", 2)
+        .attr("stroke-width", 1)
       zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
     })
     .on("mouseover", function(event) {
@@ -357,16 +402,15 @@ theHouses.forEach( item => {
         d3.select( this )
         .transition()
         .duration( 300 )
-        .attr("stroke-width", 4)
+        .attr("width", 4)
       }
     })
     .on("mouseout", function(event) {
       if( !sliding ) {
-
         d3.select( this )
           .transition()
           .duration( 300 )
-          .attr("stroke-width", 2)
+          .attr("stroke-width", 1)
       }
     })
   
@@ -380,8 +424,8 @@ theHouses.forEach( item => {
       const seasonSpace = d.season * getSeasonSpace( d );
       return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
     })
-    .attr("cy", d => yScale(d.category) + 10)
-    .attr("r", 8)
+    .attr("cy", d => yScale(d.category) + 8)
+    .attr("r", 10)
     .attr("fill", "black")
     .on('click', function(event) {
       d3.select(this)
@@ -439,6 +483,12 @@ function closeZoom() {
     .duration( 1000 )
     .attr("opacity", 0)
     .attr("display", "none")
+
+  // turn off blue left dots
+  d3.selectAll(".left-dot")
+    .transition()
+    .duration(1000)
+    .style("fill", "white")
 
   // turn off focus state
   focusState = false;
