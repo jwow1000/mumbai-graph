@@ -48,6 +48,7 @@ const spacerLabels = {
 
 // Create the SVG container
 const svg = d3.create("svg")
+  .attr("class", "svg-d3")
   .attr("width", width + marginRight)
   .attr("height", height)
 
@@ -285,7 +286,7 @@ svg.selectAll(".dot")
     return d.position + (d.index * getSeasonSpace( d ) );
   })
   .attr("cy", d => yScale( d.category ) + 10 )
-  .attr("r", 3)
+  .attr("r", 4)
   .style("fill", "white")
   .style("stroke", "grey")
   .attr("transform", `translate(${innerLeft + marginLeft},0)`)
@@ -375,7 +376,7 @@ theHouses.forEach( item => {
     })
     .attr("cy", d => yScale(d.category) + 10)
     .attr("r", 8)
-    .attr("fill", "blue")
+    .attr("fill", "black")
     .on('click', function(event) {
       d3.select(this)
         .interrupt()
@@ -409,7 +410,7 @@ svg.append( "image" )
   .attr("x", 0) // should this be the x position of the graph
   .attr("y", 0)
   .attr("width", (bigGap - marginRight - marginLeft) )   //bigGap is how wide the window is when focus
-  .attr("height", height)
+  .attr("height", height - marginBottom - marginTop)
   .attr("display", "none")
   .attr("opacity", 0)
   .attr("href", theHouses[0].displayImg )
@@ -486,11 +487,12 @@ function zoomOnItem( target, item ) {
     // redraw the scene with a new targetYear
     reDrawElements( target );
     
+    const xPos = xPositions[target].position;
     // redraw the story image
     svg.select(".story-image")
-      .attr("x", xPositions[target].position + innerLeft + marginLeft)     // reset to new x position
+      .attr("x", xPos + innerLeft + marginLeft + (xPos/2))     
       .attr("href", item.displayImg)
-      .attr("width", bigGap + xPositions[target].position)
+      .attr("width", bigGap - (xPos/2) )
       .attr("display", "block")
       .attr("preserveAspectRatio", "xMidYMid meet")
       .transition()
