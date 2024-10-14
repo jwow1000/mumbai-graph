@@ -139,7 +139,11 @@ function reDrawElements( target ) {
     .transition()
     .duration( 1000 )
     .attr("cx", d => {
-      return d.position + (d.index * getSeasonSpace( d ) );
+      if( focusState ) {
+        return d.position + (d.index * getSeasonSpace( d ) );
+      } else {
+        return d.position
+      }
     })
   
 
