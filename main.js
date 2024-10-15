@@ -110,12 +110,29 @@ function reDrawElements( target ) {
   // targetYear = target;
   xPositions = calcXpos( target );
 
-  // update the xAxis labels
-  xAxis.selectAll(".xLabel")
-    .data( Object.values( xPositions ) )
-    .transition()
-    .duration( 1000 )
-    .attr( "y", d => d.position )
+  // rotate the xAxis labels
+  if( focusState ) {
+    // update the xAxis labels
+    xAxis.selectAll(".xLabel")
+      .data( Object.values( xPositions ) )
+      .transition()
+      .duration( 1000 )
+      .attr("text-anchor", "middle")
+      .attr("transform", d => `translate(${d.position - 10}, ${d.position + 20}) rotate(-90)`) // Adjust transform
+      .attr("x", d => d.position)             // x position adjustment (assuming xPositions has an x value)
+  } else {
+    // update the xAxis labels
+    xAxis.selectAll(".xLabel")
+      .data( Object.values( xPositions ) )
+      .transition()
+      .duration( 1000 )
+      .attr("text-anchor", "middle")
+      .attr( "x", d => d.position + 8)
+      .attr( "y", 20)
+      .attr("transform", d => "rotate(0)") 
+  }
+
+
 
   // update dot data
   let dotData = Object.values(xPositions).flatMap(item => {
@@ -139,7 +156,7 @@ function reDrawElements( target ) {
     .transition()
     .duration( 1000 )
     .attr("cx", d => {
-      if( focusState ) {
+      if( !focusState ) {
         return d.position + (d.index * getSeasonSpace( d ) );
       } else {
         return d.position
@@ -189,15 +206,13 @@ xAxis.selectAll(".xLabel")
   .enter()
   .append("text")
     .attr("class", "xLabel")
-    .attr("class", "svg-herz") // add class for webflow styling
-    .attr("y", d => d.position)
-    .attr("x", -30)  // Adjust this to position the label correctly
-    .attr("dy", "0.71em")
-    .attr("transform", "rotate(-90)") // Rotate the label
-    .attr("text-anchor", "start") // Align text to the end of the label
-    .attr("dx", "-0.5em") // Move the label slightly to the left
+    .attr("x", d => d.position + 8)
+    .attr("y", 10)  // Adjust this to position the label correctly
+    // .attr("transform", "rotate(-90)") // Rotate the label
+    .attr("text-anchor", "middle") // Align text to the end of the label
     .attr("font-size", "1.4rem")
     .text(d => d.year)
+  
 
 const globalYAxisPadding = 0.5;
 
@@ -261,8 +276,6 @@ const leftColumnDotData = yAxisCat
   }));
 
 // Append circles for the left column of dots
-console.log("herz",leftColumnDotData[0].category)
-
 svg.selectAll(".left-dot")
   .data( leftColumnDotData )
   .enter()
@@ -291,8 +304,6 @@ let dotData = Object.values(xPositions).flatMap(item => {
     }
   });
 });
-
-// console.log("dotData", dotData)
 
 // get season group spacing
 function getSeasonSpace( item ) {
@@ -346,7 +357,8 @@ theHouses.forEach( item => {
         .duration( 500 )
         .attr("width", "300")
         .attr("height", "300")
-
+      
+      // make left dots blue
       item.listxy.forEach((xy) => {
         d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
           .transition()
@@ -360,7 +372,9 @@ theHouses.forEach( item => {
         .duration( 500 )
         .attr("width", "100")
         .attr("height", "100")
-      if( !focusState ) {
+        
+        // turn off left dots
+        if( !focusState ) {
         item.listxy.forEach((xy) => {
           d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
             .transition()
@@ -390,27 +404,32 @@ theHouses.forEach( item => {
     .attr("stroke-width", 1)
     .attr("d", lineGen( item.listxy ))
     .on('click', function(event) {
-      d3.select(this)
-        .interrupt()
-        .transition()
-        .duration( 1000 )
-        .attr("stroke-width", 1)
       zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
+      item.listxy.forEach((xy) => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition()
+          .duration(1000)
+          .style("fill", "blue") 
+      })
     })
     .on("mouseover", function(event) {
-      if( !sliding ) {
-        d3.select( this )
-        .transition()
-        .duration( 300 )
-        .attr("width", 4)
-      }
+      // make left dots blue
+      item.listxy.forEach((xy) => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition()
+          .duration(1000)
+          .style("fill", "blue") 
+      })
     })
     .on("mouseout", function(event) {
-      if( !sliding ) {
-        d3.select( this )
-          .transition()
-          .duration( 300 )
-          .attr("stroke-width", 1)
+      // turn off left dots
+      if( !focusState ) {
+        item.listxy.forEach((xy) => {
+          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+            .transition()
+            .duration(1000)
+            .style("fill", "white") 
+        })
       }
     })
   
@@ -434,6 +453,13 @@ theHouses.forEach( item => {
         .duration( 500 )
         .attr("r", 8)
       zoomOnItem( item.listxy[0].year, item ); // Trigger the zoom/collapse effect
+      // make left dots blue
+      item.listxy.forEach((xy) => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition()
+          .duration(1000)
+          .style("fill", "blue") 
+      })
     })
     .on("mouseover", function(event) {
       if( !sliding ) {
@@ -442,8 +468,25 @@ theHouses.forEach( item => {
         .duration( 500 )
         .attr("r", 12)
       }
+      // make left dots blue
+      item.listxy.forEach((xy) => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition()
+          .duration(1000)
+          .style("fill", "blue") 
+      })
     })
     .on("mouseout", function(event) {
+      // turn off left dots
+      if( !focusState ) {
+        item.listxy.forEach((xy) => {
+          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+            .transition()
+            .duration(1000)
+            .style("fill", "white") 
+        })
+      }
+
       if( !sliding ) {
 
         d3.select( this )
@@ -474,6 +517,9 @@ svg.append( "image" )
     
 
 function closeZoom() {
+  // turn off focus state
+  focusState = false;
+  
   // redraw the scene with year 0 to return to default
   reDrawElements( 0 );
 
@@ -490,22 +536,18 @@ function closeZoom() {
     .duration(1000)
     .style("fill", "white")
 
-  // turn off focus state
-  focusState = false;
+  
 }
 
 // add labels to yAxis
 yAxisLabelsGroup.selectAll('text')
     .each( function() {
       if( this.__data__.startsWith('_spacer') ) {
-        console.log("omg this", this)
         // style font
         d3.select( this )
           .style("font-size", "1rem")
           .style("font-weight", 700)
           .attr("text-anchor", "middle")
-          
-
         
         // add the box
         const elem = d3.select(this).node();
@@ -538,13 +580,16 @@ yAxisLabelsGroup.selectAll('text')
     })
 
 function zoomOnItem( target, item ) {
-  // console.log("xPositions before click", xPositions);
   // if were not focused ...
   if( !focusState ) {
+    // set focus state to true
+    focusState = true;
+    
     // redraw the scene with a new targetYear
     reDrawElements( target );
     
     const xPos = xPositions[target].position;
+    
     // redraw the story image
     svg.select(".story-image")
       .attr("x", xPos + innerLeft + marginLeft + (xPos/2))     
@@ -555,9 +600,6 @@ function zoomOnItem( target, item ) {
       .transition()
       .duration( 1000 )
       .attr("opacity", 1);
-  
-    // set focus state to true
-    focusState = true;
 
   } else {
     closeZoom();
