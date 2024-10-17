@@ -11,21 +11,39 @@ let sliding = false;
 // get the graph container from webflow
 const container = document.getElementById('graph-contain');
 
+// get viewport dimensions
+const viewport = {}
+
+function getVP() {
+  const viewportWidth = window.innerWidth > 1000 ? window.innerWidth : 1000;
+  const viewportHeight = window.innerHeight > 400 ? window.innerHeight : 400;
+  viewport.width = viewportWidth;
+  viewport.height = viewportHeight;
+
+}
+// trigger getVP
+getVP();
+
+window.addEventListener('resize', () => {
+  getVP();
+});
 
 // variables
 // Declare the chart dimensions and margins.
-const marginTop = 10;
-const marginRight = 50;
-const marginBottom = 50;
-const marginLeft = 150;
-const width = 1900;
-const height = 1000;
-const innerLeft = 60;
-const innerTop = 40;
+const width = viewport.width;
+const height = viewport.height;
+
+const marginTop = height / 100;
+const marginRight = width / 20 ;
+const marginBottom = height / 50;
+const marginLeft = width / 11;
+
+const innerLeft = width / 70;
+const innerTop = height / 100;
+const bigGap = width / 1.5;
 
 // make a data object
 const theHouses = getData();
-// console.log("theHouses", theHouses)
 
 const yAxisCat = [
   "_spacer1",
@@ -49,7 +67,7 @@ const spacerLabels = {
 // Create the SVG container
 const svg = d3.create("svg")
   .attr("class", "svg-d3")
-  .attr("width", width + marginRight)
+  .attr("width", width )
   .attr("height", height)
 
 // Declare the x scale.
@@ -59,16 +77,16 @@ const xScale = d3.scaleLinear()
 
 // Calculate the positions based on the widths
 let cumulativePosition = innerLeft;
-const bigGap = 1200;
+
 const restOfGraph = (width - (innerLeft + marginLeft + marginRight)) - bigGap;
 const restWidth = restOfGraph / (years.length - 2);
-const defaultWidth = (width - (innerLeft + marginLeft)) / years.length; 
+const defaultWidth = (width - (innerLeft + marginLeft + marginRight)) / years.length; 
 
 // calculate xPositions function
 function calcXpos( target ) {
   if( target !== 0 ) {
     // reset count variable
-    cumulativePosition = innerLeft; 
+    cumulativePosition = innerLeft * 3; 
     // make empty object
     const xData = {}
     // iterate and make an object of years: positons
@@ -89,8 +107,8 @@ function calcXpos( target ) {
     // close the graph
     // make empty object
     const xData = {}
-    // reset coutn variab;e
-    cumulativePosition = innerLeft; 
+    // reset count variab;e
+    cumulativePosition = innerLeft * 3; 
     
     years.forEach( year => {
       const pos = cumulativePosition;
@@ -117,10 +135,18 @@ function reDrawElements( target ) {
       .data( Object.values( xPositions ) )
       .transition()
       .duration( 1000 )
-      .attr("text-anchor", "middle")
-      .attr("transform", d => `translate(${d.position - 10}, ${d.position + 20}) rotate(-90)`) // Adjust transform
-      .attr("x", d => d.position)             // x position adjustment (assuming xPositions has an x value)
+      .attr("x", d => d.position )             // x position adjustment (assuming xPositions has an x value)
+      // .attr("text-anchor", "start")
+      .attr("transform", d => `translate(${d.position - 10}, ${d.position}) rotate(-90)`) // Adjust transform
+    
+    // xAxis.selectAll( ".xLabel" )
+    //   .data( Object.values( xPositions ) )
+    //   .transition()
+    //   .duration( 1000 )
+    //   .attr("x", d => d.position )             // x position adjustment (assuming xPositions has an x value)
+
   } else {
+    
     // update the xAxis labels
     xAxis.selectAll(".xLabel")
       .data( Object.values( xPositions ) )
@@ -128,11 +154,9 @@ function reDrawElements( target ) {
       .duration( 1000 )
       .attr("text-anchor", "middle")
       .attr( "x", d => d.position + 8)
-      .attr( "y", 20)
+      .attr( "y", 0)
       .attr("transform", d => "rotate(0)") 
   }
-
-
 
   // update dot data
   let dotData = Object.values(xPositions).flatMap(item => {
@@ -182,10 +206,14 @@ function reDrawElements( target ) {
       .interrupt()
       .transition()
       .duration( 1000 )
-      .attr("r", 8)
+      .attr("r", 7)
       .attr("cx", d => {
-        const seasonSpace = d.season * getSeasonSpace( d );
-        return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
+        if( !focusState ) {
+          const seasonSpace = d.season * getSeasonSpace( d );
+          return (xPositions[d.year].position + innerLeft + marginLeft ) + seasonSpace
+        } else {
+          return xPositions[d.year].position + innerLeft + marginLeft 
+        }
       })
       .on("end", function(){
         sliding = false;
@@ -206,11 +234,11 @@ xAxis.selectAll(".xLabel")
   .enter()
   .append("text")
     .attr("class", "xLabel")
-    .attr("x", d => d.position + 8)
-    .attr("y", 10)  // Adjust this to position the label correctly
+    .attr("x", d => d.position - 3)
+    .attr("y", 3)  // Adjust this to position the label correctly
     // .attr("transform", "rotate(-90)") // Rotate the label
-    .attr("text-anchor", "middle") // Align text to the end of the label
-    .attr("font-size", "1.4rem")
+    .attr("text-anchor", "middle") // Align text to the middle of the label
+    .attr("font-size", "0.7rem")
     .text(d => d.year)
   
 
@@ -248,7 +276,7 @@ const yAxisLabels = d3.axisLeft( yAxisThemeScale )
 
 const yAxisLabelsGroup = svg.append("g")
   .attr("class", "yAxisLabels")
-  .attr("transform", "translate(100,0)")
+  .attr("transform", `translate(${innerLeft* 4},0)`)
   .attr("text-anchor", "middle")
   .call( yAxisLabels )
 
@@ -263,7 +291,7 @@ svg.selectAll("path").remove();
 
 // style y axis labels
 yAxisGroup.selectAll("text")
-  .style("font-size", "0.8rem")
+  .style("font-size", "0.6rem")
 
 // add extra YAxis of dots
 // Create the new left column dot data
@@ -271,7 +299,7 @@ const leftColumnDotData = yAxisCat
   .filter(cat => !cat.startsWith("_spacer"))  // Exclude spacers
   .map(cat => ({
     category: cat,
-    cx: marginLeft + 20,  // Position the dots left of the main graph, adjust as needed
+    cx: marginLeft + innerLeft,  // Position the dots left of the main graph, adjust as needed
     cy: yScale(cat) + 8   // Align the dots with the Y-axis categories
   }));
 
@@ -284,10 +312,10 @@ svg.selectAll(".left-dot")
   .attr( "class", "left-dot")
   .attr("cx", d => d.cx)  // Use calculated x-position
   .attr("cy", d => d.cy)  // Use calculated y-position
-  .attr("r", 10)
+  .attr("r", 8)
   .style("fill", "white")
   .style("stroke", "black")
-  .attr("transform", `translate(${innerLeft },0)`);
+  .attr("transform", `translate(${innerLeft },-1)`);
 
 // create the dot data
 let dotData = Object.values(xPositions).flatMap(item => {
@@ -322,10 +350,10 @@ svg.selectAll(".dot")
   .append("circle")
   .attr("class", "dot")
   .attr("cx", d => {
-    return d.position + (d.index * getSeasonSpace( d ) );
+    return xPositions[d.year].position + (d.index * getSeasonSpace( d ) );
   })
   .attr("cy", d => yScale( d.category ) + 8 )
-  .attr("r", 4)
+  .attr("r", 3)
   .style("fill", "white")
   .style("stroke", "grey")
   .attr("transform", `translate(${innerLeft + marginLeft},0)`)
@@ -333,15 +361,19 @@ svg.selectAll(".dot")
 // define the line generator
 const lineGen = d3.line()
   .x(d => {
-    const seasonSpace = d.season * getSeasonSpace( d );
-    return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
+    if( !focusState ) {
+      const seasonSpace = d.season * getSeasonSpace( d );
+      return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace;
+    } else {
+      return xPositions[d.year].position + innerLeft + marginLeft;
+    }
   })
   .y(d => yScale( d.category ) + 10 )
   .curve( d3.curveLinear);
 
 // draw the lines and dots from theHouses data
 theHouses.forEach( item => {
-  console.log("listXY: ", item.listxy, xPositions)
+  // console.log("listXY: ", item.listxy, xPositions)
   // draw the preview
   svg.append( "image" )
     .attr("class", `preview-${item.name} thumbs`) 
@@ -444,7 +476,7 @@ theHouses.forEach( item => {
       return (xPositions[d.year].position + innerLeft + marginLeft) + seasonSpace
     })
     .attr("cy", d => yScale(d.category) + 8)
-    .attr("r", 10)
+    .attr("r", 7)
     .attr("fill", "black")
     .on('click', function(event) {
       d3.select(this)
@@ -545,32 +577,28 @@ yAxisLabelsGroup.selectAll('text')
       if( this.__data__.startsWith('_spacer') ) {
         // style font
         d3.select( this )
-          .style("font-size", "1rem")
-          .style("font-weight", 700)
+          .style("font-size", "0.7rem")
           .attr("text-anchor", "middle")
         
-        // add the box
-        const elem = d3.select(this).node();
-
-        console.log("bounding box", elem.parentNode.getBBox())
-
+        // add the box with rounded corners
         d3.select( this.parentNode )  // Select the parent group of the text (tick group)
           .insert("rect", "text")     // Insert circle before the text
-          .attr("x",  "-5.5rem")    // Same x position as text
-          .attr("y",  -16)            // Same y position as text
-          .attr("width", "11rem" )  
-          .attr("height", "2rem" )  
+          .attr("x",  "-4rem")    // Same x position as text
+          .attr("y",  "-0.6rem")            // Same y position as text
+          .attr("width", "8rem" )  
+          .attr("height", "1.2rem" )  
           .attr("rx", 6)  // Rounded corner radius
           .attr("ry", 6)
           .style("fill", "none")  // Background color
           .style("stroke", "black")  // Border color
-          .style("stroke-width", 1);  // Border width
+          .style("stroke-width", 0.5);  // Border width
         
+        // add the dotted line
         d3.select( this.parentNode )
           .insert("line", "rect")
-          .attr("x1", "5.8rem")  // Starting x position
+          .attr("x1", "4rem")  // Starting x position
           .attr("y1", 0)  // Starting y position (same as rect)
-          .attr("x2", width)  // Ending x position (adjust as needed)
+          .attr("x2", width - innerLeft*5)  // Ending x position (adjust as needed)
           .attr("y2", 0)  // Ending y position (same as rect) 
           .style("stroke", "black")  // Color of the dashed line
           .style("stroke-width", 1)  // Width of the dashed line
