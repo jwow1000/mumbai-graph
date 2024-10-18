@@ -137,7 +137,7 @@ function reDrawElements( target ) {
       .duration( 1000 )
       .attr("x", d => d.position )             // x position adjustment (assuming xPositions has an x value)
       // .attr("text-anchor", "start")
-      .attr("transform", d => `translate(${d.position - 10}, ${d.position}) rotate(-90)`) // Adjust transform
+      .attr("transform", d => `translate(${d.position - 12}, ${d.position + 8}) rotate(-90)`) // Adjust transform
     
     // xAxis.selectAll( ".xLabel" )
     //   .data( Object.values( xPositions ) )
@@ -153,8 +153,8 @@ function reDrawElements( target ) {
       .transition()
       .duration( 1000 )
       .attr("text-anchor", "middle")
-      .attr( "x", d => d.position + 8)
-      .attr( "y", 0)
+      .attr( "x", d => d.position - 2)
+      .attr( "y", 3)
       .attr("transform", d => "rotate(0)") 
   }
 
@@ -289,9 +289,9 @@ const yAxisGroup = svg.append("g")
 // remove the axis lines
 svg.selectAll("path").remove();
 
-// style y axis labels
-yAxisGroup.selectAll("text")
-  .style("font-size", "0.6rem")
+// // style y axis labels
+// yAxisGroup.selectAll("text")
+//   .style("font-size", "0.6rem")
 
 // add extra YAxis of dots
 // Create the new left column dot data
@@ -587,7 +587,7 @@ yAxisLabelsGroup.selectAll('text')
           .attr("y",  "-0.6rem")            // Same y position as text
           .attr("width", "8rem" )  
           .attr("height", "1.2rem" )  
-          .attr("rx", 6)  // Rounded corner radius
+          .attr("rx", "10px")  // Rounded corner radius
           .attr("ry", 6)
           .style("fill", "none")  // Background color
           .style("stroke", "black")  // Border color
