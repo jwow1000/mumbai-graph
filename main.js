@@ -131,8 +131,9 @@ async function init() {
     .enter()
     .append("text")
     .attr("class", "xLabel")
-    .attr("x", d => d.position - 3)
-    .attr("y", 3)
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("transform", d => `translate(${d.position - 3}, 3) rotate(0)`)
     .attr("text-anchor", "middle")
     .attr("font-size", "0.7rem")
     .text(d => d.year);
@@ -236,16 +237,13 @@ async function init() {
         .data(Object.values(xPositions))
         .transition()
         .duration(1000)
-        .attr("transform", d => `translate(${d.position - 12}, ${d.position + 8}) rotate(-90)`);
+        .attr("transform", d => `translate(${d.position - 2}, 3) rotate(-90)`);
     } else {
       xAxis.selectAll(".xLabel")
         .data(Object.values(xPositions))
         .transition()
         .duration(1000)
-        .attr("text-anchor", "middle")
-        .attr("x", d => d.position - 2)
-        .attr("y", 3)
-        .attr("transform", () => "rotate(0)");
+        .attr("transform", d => `translate(${d.position - 2}, 3) rotate(0)`);
     }
 
     dotData = Object.values(xPositions).flatMap(item =>
