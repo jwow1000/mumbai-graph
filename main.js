@@ -8,7 +8,11 @@ const SANITY_API_VERSION = '2024-01-01';
 const SANITY_QUERY = encodeURIComponent(`*[_type == "structure"] | order(name asc) {
   _id,
   name,
-  previewImage { asset-> { url } },
+  blueprintImage { 
+    asset-> { url },
+    x,
+    y
+  },
   displayImage { asset-> { url } },
   previewPosition,
   dataPoints[] | order(year asc) {
@@ -33,11 +37,10 @@ function transformSanityData(structures) {
       season: dp.season ?? 0,
       category: dp.phase.toUpperCase(),
     })),
-    previewImg: s.previewImage?.asset?.url ?? "",
+    blueprintImg: s.blueprintImage?.asset?.url ?? "",
+    blueprintX: s.blueprintImage?.x ?? 0,
+    blueprintY: s.blueprintImage?.y ?? 0,
     displayImg: s.displayImage?.asset?.url ?? "",
-    previewPos: s.previewPosition
-      ? [s.previewPosition.x / 100, s.previewPosition.y / 100]
-      : [0, 0],
   }));
 }
 
@@ -272,7 +275,7 @@ async function init() {
         .transition()
         .duration(1000)
         .attr("d", lineGen(item.listxy))
-        .attr("stroke-width", 1);
+        .attr("stroke-width", 4);
 
       svg.selectAll(`.circles-${item.name}`)
         .data(item.listxy)
@@ -325,11 +328,11 @@ async function init() {
   theHouses.forEach(item => {
     svg.append("image")
       .attr("class", `preview-${item.name} thumbs`)
-      .attr("x", xPositions[item.listxy[0]?.year]?.position + (item.previewPos[0] * width) ?? 0)
-      .attr("y", item.previewPos[1] * height)
+      .attr("x", (item.blueprintX / 100) * width)
+      .attr("y", (item.blueprintY / 100) * height)
       .attr("width", "100")
       .attr("height", "100")
-      .attr("href", item.previewImg)
+      .attr("href", item.blueprintImg)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .on("mouseover", () => {
         d3.select(`.preview-${item.name}`)
@@ -363,8 +366,8 @@ async function init() {
       .datum(item.listxy)
       .attr("class", `lines-${item.name}`)
       .attr("fill", "none")
-      .attr("stroke", "black")
-      .attr("stroke-width", 1)
+      .attr("stroke", "rgb(63, 84, 133)")
+      .attr("stroke-width", 4)
       .attr("d", lineGen(item.listxy))
       .on("click", () => {
         zoomOnItem(item.listxy[0].year, item);
@@ -396,7 +399,7 @@ async function init() {
       .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d)))
       .attr("cy", d => yScale(d.category) + 8)
       .attr("r", 7)
-      .attr("fill", "black")
+      .attr("fill", "rgb(63, 84, 133)")
       .on("click", function () {
         d3.select(this).interrupt().transition().duration(500).attr("r", 8);
         zoomOnItem(item.listxy[0].year, item);
