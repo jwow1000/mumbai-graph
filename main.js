@@ -8,17 +8,25 @@ const SANITY_API_VERSION = '2024-01-01';
 const SANITY_QUERY = encodeURIComponent(`*[_type == "structure"] | order(name asc) {
   _id,
   name,
-  blueprintImage { 
+  blueprintImage {
     asset-> { url },
     x,
     y
   },
   displayImage { asset-> { url } },
-  previewPosition,
-  dataPoints[] | order(year asc) {
-    year,
-    phase,
-    season
+  lifeCycles[] {
+    label,
+    dataPoints[] | order(year asc) {
+      year,
+      phase,
+      season,
+      previewImage {
+        asset-> { url },
+        x,
+        y
+      },
+      contentImage { asset-> { url } }
+    }
   }
 }`);
 
@@ -32,10 +40,17 @@ async function fetchStructures() {
 function transformSanityData(structures) {
   return structures.map(s => ({
     name: s.name,
-    listxy: (s.dataPoints || []).map(dp => ({
-      year: dp.year,
-      season: dp.season ?? 0,
-      category: dp.phase.toUpperCase(),
+    lifeCycles: (s.lifeCycles || []).map(lc => ({
+      label: lc.label,
+      points: (lc.dataPoints || []).map(dp => ({
+        year: dp.year,
+        season: dp.season ?? 0,
+        category: dp.phase.toUpperCase(),
+        previewImg: dp.previewImage?.asset?.url ?? "",
+        previewX: dp.previewImage?.x ?? null,
+        previewY: dp.previewImage?.y ?? null,
+        contentImg: dp.contentImage?.asset?.url ?? "",
+      })),
     })),
     blueprintImg: s.blueprintImage?.asset?.url ?? "",
     blueprintX: s.blueprintImage?.x ?? 0,
@@ -66,7 +81,7 @@ const height = viewport.height;
 
 const marginTop = height / 100;
 const marginRight = width / 20;
-const marginBottom = height / 50;
+const marginBottom = height / 12;
 const marginLeft = width / 11;
 
 const innerLeft = width / 70;
@@ -87,7 +102,7 @@ const yAxisCat = [
 const spacerLabels = {
   "_spacer1": "OCCUPANCY",
   "_spacer2": "BUILDING",
-  "_spacer3": "INFASTRUCTURE",
+  "_spacer3": "INFRASTRUCTURE",
   "_spacer4": "PLANNING",
 };
 
@@ -136,7 +151,7 @@ async function init() {
     .attr("class", "xLabel")
     .attr("x", 0)
     .attr("y", 0)
-    .attr("transform", d => `translate(${d.position - 3}, 3) rotate(0)`)
+    .attr("transform", d => `translate(${d.position - 3}, 8) rotate(0)`)
     .attr("text-anchor", "middle")
     .attr("font-size", "0.7rem")
     .text(d => d.year);
@@ -231,6 +246,15 @@ async function init() {
     .y(d => yScale(d.category) + 10)
     .curve(d3.curveLinear);
 
+  function highlightDots(item, color) {
+    item.lifeCycles.forEach(lc => {
+      lc.points.forEach(xy => {
+        d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+          .transition().duration(1000).style("fill", color);
+      });
+    });
+  }
+
   function reDrawElements(target) {
     sliding = true;
     xPositions = calcXpos(target);
@@ -240,7 +264,7 @@ async function init() {
         .data(Object.values(xPositions))
         .transition()
         .duration(1000)
-        .attr("transform", d => `translate(${d.position - 2}, 3) rotate(-90)`);
+        .attr("transform", d => `translate(${d.position - 2}, 8) rotate(-90)`);
     } else {
       xAxis.selectAll(".xLabel")
         .data(Object.values(xPositions))
@@ -270,27 +294,30 @@ async function init() {
       );
 
     theHouses.forEach(item => {
-      svg.selectAll(`.lines-${item.name}`)
-        .datum(item.listxy)
-        .transition()
-        .duration(1000)
-        .attr("d", lineGen(item.listxy))
-        .attr("stroke-width", 4);
+      item.lifeCycles.forEach((lc, lcIndex) => {
+        const key = `${item.name}-${lcIndex}`;
+        svg.selectAll(`.lines-${key}`)
+          .datum(lc.points)
+          .transition()
+          .duration(1000)
+          .attr("d", lineGen(lc.points))
+          .attr("stroke-width", 1);
 
-      svg.selectAll(`.circles-${item.name}`)
-        .data(item.listxy)
-        .join("circle")
-        .interrupt()
-        .transition()
-        .duration(1000)
-        .attr("r", 7)
-        .attr("cx", d => {
-          if (!focusState) {
-            return xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d));
-          }
-          return xPositions[d.year].position + innerLeft + marginLeft;
-        })
-        .on("end", function () { sliding = false; });
+        svg.selectAll(`.circles-${key}`)
+          .data(lc.points)
+          .join("circle")
+          .interrupt()
+          .transition()
+          .duration(1000)
+          .attr("r", 7)
+          .attr("cx", d => {
+            if (!focusState) {
+              return xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d));
+            }
+            return xPositions[d.year].position + innerLeft + marginLeft;
+          })
+          .on("end", function () { sliding = false; });
+      });
     });
   }
 
@@ -306,15 +333,16 @@ async function init() {
       .style("fill", "white");
   }
 
-  function zoomOnItem(target, item) {
+  function zoomOnItem(target, item, imgOverride) {
+    const img = imgOverride || item.displayImg;
     if (!focusState) {
       focusState = true;
       reDrawElements(target);
       const xPos = xPositions[target].position;
       svg.select(".story-image")
-        .attr("x", xPos + innerLeft + marginLeft + (xPos / 2))
-        .attr("href", item.displayImg)
-        .attr("width", bigGap - (xPos / 2))
+        .attr("x", xPos + innerLeft + marginLeft)
+        .attr("href", img)
+        .attr("width", bigGap)
         .attr("display", "block")
         .attr("preserveAspectRatio", "xMidYMid meet")
         .transition().duration(1000)
@@ -326,104 +354,146 @@ async function init() {
 
   // draw per-house elements
   theHouses.forEach(item => {
-    svg.append("image")
+    // blueprint thumbnail
+    const bpCx = (item.blueprintX / 100) * width;
+    const bpCy = (item.blueprintY / 100) * height;
+    const bpImg = svg.append("image")
       .attr("class", `preview-${item.name} thumbs`)
-      .attr("x", (item.blueprintX / 100) * width)
-      .attr("y", (item.blueprintY / 100) * height)
-      .attr("width", "100")
-      .attr("height", "100")
+      .attr("x", bpCx - 75)
+      .attr("y", bpCy - 75)
+      .attr("width", "150")
       .attr("href", item.blueprintImg)
       .attr("preserveAspectRatio", "xMidYMid meet")
+      .attr("pointer-events", "none");
+
+    svg.append("rect")
+      .attr("class", "thumbs")
+      .attr("x", bpCx - 30)
+      .attr("y", bpCy - 30)
+      .attr("width", 60)
+      .attr("height", 60)
+      .attr("fill", "transparent")
       .on("mouseover", () => {
-        d3.select(`.preview-${item.name}`)
-          .transition().duration(500)
-          .attr("width", "300").attr("height", "300");
-        item.listxy.forEach(xy => {
-          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-            .transition().duration(1000).style("fill", "blue");
-        });
+        bpImg.transition().duration(500)
+          .attr("x", bpCx - 93.75).attr("y", bpCy - 93.75)
+          .attr("width", "187.5");
+        highlightDots(item, "blue");
       })
       .on("mouseout", () => {
-        d3.select(`.preview-${item.name}`)
-          .transition().duration(500)
-          .attr("width", "100").attr("height", "100");
-        if (!focusState) {
-          item.listxy.forEach(xy => {
-            d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-              .transition().duration(1000).style("fill", "white");
-          });
-        }
+        bpImg.transition().duration(500)
+          .attr("x", bpCx - 75).attr("y", bpCy - 75)
+          .attr("width", "150");
+        if (!focusState) highlightDots(item, "white");
       })
       .on("click", () => {
-        zoomOnItem(item.listxy[0].year, item);
-        item.listxy.forEach(xy => {
-          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-            .transition().duration(1000).style("fill", "blue");
-        });
+        const firstYear = item.lifeCycles[0]?.points[0]?.year;
+        if (firstYear) zoomOnItem(firstYear, item);
+        highlightDots(item, "blue");
       });
 
-    svg.append("path")
-      .datum(item.listxy)
-      .attr("class", `lines-${item.name}`)
-      .attr("fill", "none")
-      .attr("stroke", "rgb(63, 84, 133)")
-      .attr("stroke-width", 4)
-      .attr("d", lineGen(item.listxy))
-      .on("click", () => {
-        zoomOnItem(item.listxy[0].year, item);
-        item.listxy.forEach(xy => {
-          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-            .transition().duration(1000).style("fill", "blue");
-        });
-      })
-      .on("mouseover", () => {
-        item.listxy.forEach(xy => {
-          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-            .transition().duration(1000).style("fill", "blue");
-        });
-      })
-      .on("mouseout", () => {
-        if (!focusState) {
-          item.listxy.forEach(xy => {
-            d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-              .transition().duration(1000).style("fill", "white");
+    item.lifeCycles.forEach((lc, lcIndex) => {
+      const key = `${item.name}-${lcIndex}`;
+
+      // per-point preview thumbnails — positioned at the dot's graph coordinates
+      lc.points.forEach((pt, ptIndex) => {
+        if (!pt.previewImg) return;
+        const dotCx = xPositions[pt.year].position + innerLeft + marginLeft + (pt.season * getSeasonSpace(pt));
+        const dotCy = yScale(pt.category) + 8;
+        const ptCx = dotCx + (pt.previewX ?? 0);
+        const ptCy = dotCy + (pt.previewY ?? 0);
+        const ptClass = `point-preview-${item.name}-${lcIndex}-${ptIndex}`;
+        const ptImg = svg.append("image")
+          .attr("class", `${ptClass} thumbs`)
+          .attr("x", ptCx - 75)
+          .attr("y", ptCy - 75)
+          .attr("width", "150")
+          .attr("href", pt.previewImg)
+          .attr("preserveAspectRatio", "xMidYMid meet")
+          .attr("pointer-events", "none");
+
+        svg.append("rect")
+          .attr("class", "thumbs")
+          .attr("x", ptCx - 30)
+          .attr("y", ptCy - 30)
+          .attr("width", 60)
+          .attr("height", 60)
+          .attr("fill", "transparent")
+          .on("mouseover", () => {
+            if (!pt.contentImg) return;
+            ptImg.transition().duration(500)
+              .attr("x", ptCx - 93.75).attr("y", ptCy - 93.75)
+              .attr("width", "187.5");
+            d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
+              .transition().duration(500).style("fill", "blue");
+          })
+          .on("mouseout", () => {
+            if (!pt.contentImg) return;
+            ptImg.transition().duration(500)
+              .attr("x", ptCx - 75).attr("y", ptCy - 75)
+              .attr("width", "150");
+            if (!focusState) {
+              d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
+                .transition().duration(500).style("fill", "white");
+            }
+          })
+          .on("click", () => {
+            if (!pt.contentImg) return;
+            zoomOnItem(pt.year, item, pt.contentImg);
+            d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
+              .transition().duration(1000).style("fill", "blue");
           });
-        }
       });
 
-    svg.selectAll(".circles")
-      .data(item.listxy)
-      .enter()
-      .append("circle")
-      .attr("class", `circles-${item.name}`)
-      .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d)))
-      .attr("cy", d => yScale(d.category) + 8)
-      .attr("r", 7)
-      .attr("fill", "rgb(63, 84, 133)")
-      .on("click", function () {
-        d3.select(this).interrupt().transition().duration(500).attr("r", 8);
-        zoomOnItem(item.listxy[0].year, item);
-        item.listxy.forEach(xy => {
-          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-            .transition().duration(1000).style("fill", "blue");
+      // life cycle line
+      svg.append("path")
+        .datum(lc.points)
+        .attr("class", `lines-${key}`)
+        .attr("fill", "none")
+        .attr("stroke", "rgb(0, 0, 0)")
+        .attr("stroke-width", 1)
+        .attr("d", lineGen(lc.points))
+        .on("click", () => {
+          const firstYear = lc.points[0]?.year;
+          if (firstYear) zoomOnItem(firstYear, item);
+          highlightDots(item, "blue");
+        })
+        .on("mouseover", () => {
+          highlightDots(item, "blue");
+        })
+        .on("mouseout", () => {
+          if (!focusState) highlightDots(item, "white");
         });
-      })
-      .on("mouseover", function () {
-        if (!sliding) d3.select(this).transition().duration(500).attr("r", 12);
-        item.listxy.forEach(xy => {
-          d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
+
+      // data point circles
+      svg.selectAll(`.circles-init-${key}`)
+        .data(lc.points)
+        .enter()
+        .append("circle")
+        .attr("class", `circles-${key}`)
+        .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d)))
+        .attr("cy", d => yScale(d.category) + 8)
+        .attr("r", 7)
+        .attr("fill", "rgb(0, 0, 0)")
+        .on("click", function (event, d) {
+          if (!d.contentImg) return;
+          d3.select(this).interrupt().transition().duration(500).attr("r", 8);
+          zoomOnItem(d.year, item, d.contentImg);
+          d3.select(`#left-dot-${d.category.replace(/\s+/g, '-')}`)
             .transition().duration(1000).style("fill", "blue");
+        })
+        .on("mouseover", function (event, d) {
+          if (!sliding) d3.select(this).transition().duration(500).attr("r", 12);
+          d3.select(`#left-dot-${d.category.replace(/\s+/g, '-')}`)
+            .transition().duration(500).style("fill", "blue");
+        })
+        .on("mouseout", function (event, d) {
+          if (!sliding) d3.select(this).transition().duration(500).attr("r", 8);
+          if (!focusState) {
+            d3.select(`#left-dot-${d.category.replace(/\s+/g, '-')}`)
+              .transition().duration(500).style("fill", "white");
+          }
         });
-      })
-      .on("mouseout", function () {
-        if (!focusState) {
-          item.listxy.forEach(xy => {
-            d3.select(`#left-dot-${xy.category.replace(/\s+/g, '-')}`)
-              .transition().duration(1000).style("fill", "white");
-          });
-        }
-        if (!sliding) d3.select(this).transition().duration(500).attr("r", 8);
-      });
+    });
   });
 
   // focused story image (hidden until zoom)
@@ -431,8 +501,8 @@ async function init() {
     .attr("class", "story-image")
     .attr("x", 0)
     .attr("y", 0)
-    .attr("width", bigGap - marginRight - marginLeft)
-    .attr("height", height - marginBottom - marginTop)
+    .attr("width", bigGap)
+    .attr("height", height)
     .attr("display", "none")
     .attr("opacity", 0)
     .attr("href", theHouses[0]?.displayImg ?? "")
