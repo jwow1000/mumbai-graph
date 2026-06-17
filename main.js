@@ -79,9 +79,9 @@ window.addEventListener('resize', getVP);
 const width = viewport.width;
 const height = viewport.height;
 
-const marginTop = height / 100 + 20;
+const marginTop = height / 100 + 40;
 const marginRight = width / 20;
-const marginBottom = height / 12 - 20;
+const marginBottom = height / 12 - 30;
 const marginLeft = width / 11;
 
 const innerLeft = width / 70;
@@ -140,9 +140,9 @@ async function init() {
     return restWidth / 5;
   }
 
-  // x axis
+  // x axis — bottom
   const xAxis = svg.append("g")
-    .attr("transform", `translate(${marginLeft + innerLeft + 15},${height - marginBottom})`);
+    .attr("transform", `translate(${marginLeft + innerLeft},${height - marginBottom})`);
 
   xAxis.selectAll(".xLabel")
     .data(Object.values(xPositions))
@@ -151,9 +151,9 @@ async function init() {
     .attr("class", "xLabel")
     .attr("x", 0)
     .attr("y", 0)
-    .attr("transform", d => `translate(${d.position - 3}, 8) rotate(0)`)
+    .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 8) rotate(0)`)
     .attr("text-anchor", "middle")
-    .attr("font-size", "0.7rem")
+    .attr("font-size", "12px")
     .text(d => d.year);
 
   const globalYAxisPadding = 0.5;
@@ -162,6 +162,23 @@ async function init() {
     .domain(yAxisCat)
     .range([marginTop, height - marginBottom])
     .padding(globalYAxisPadding);
+
+  // x axis — top (just below the occupancy dashed line)
+  const xAxisTopY = yScale("_spacer1") + yScale.bandwidth() / 2;
+  const xAxisTop = svg.append("g")
+    .attr("transform", `translate(${marginLeft + innerLeft},${xAxisTopY})`);
+
+  xAxisTop.selectAll(".xLabelTop")
+    .data(Object.values(xPositions))
+    .enter()
+    .append("text")
+    .attr("class", "xLabelTop")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 13) rotate(0)`)
+    .attr("text-anchor", "middle")
+    .attr("font-size", "12px")
+    .text(d => d.year);
 
   const yAxis = d3.axisLeft(yScale)
     .tickSize(0)
@@ -264,13 +281,23 @@ async function init() {
         .data(Object.values(xPositions))
         .transition()
         .duration(1000)
-        .attr("transform", d => `translate(${d.position - 2}, 8) rotate(-90)`);
+        .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 8) rotate(-90)`);
+      xAxisTop.selectAll(".xLabelTop")
+        .data(Object.values(xPositions))
+        .transition()
+        .duration(1000)
+        .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 11) rotate(-90)`);
     } else {
       xAxis.selectAll(".xLabel")
         .data(Object.values(xPositions))
         .transition()
         .duration(1000)
-        .attr("transform", d => `translate(${d.position - 2}, 3) rotate(0)`);
+        .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 8) rotate(0)`);
+      xAxisTop.selectAll(".xLabelTop")
+        .data(Object.values(xPositions))
+        .transition()
+        .duration(1000)
+        .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 11) rotate(0)`);
     }
 
     dotData = Object.values(xPositions).flatMap(item =>
@@ -516,7 +543,7 @@ async function init() {
   yAxisLabelsGroup.selectAll("text").each(function () {
     if (this.__data__.startsWith("_spacer")) {
       d3.select(this)
-        .style("font-size", "0.7rem")
+        .style("font-size", "12px")
         .attr("text-anchor", "middle");
 
       d3.select(this.parentNode)
