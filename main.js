@@ -79,9 +79,9 @@ window.addEventListener('resize', getVP);
 const width = viewport.width;
 const height = viewport.height;
 
-const marginTop = height / 100;
+const marginTop = height / 100 + 20;
 const marginRight = width / 20;
-const marginBottom = height / 12;
+const marginBottom = height / 12 - 20;
 const marginLeft = width / 11;
 
 const innerLeft = width / 70;
@@ -239,7 +239,7 @@ async function init() {
   const lineGen = d3.line()
     .x(d => {
       if (!focusState) {
-        return xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d));
+        return xPositions[d.year].position + innerLeft + marginLeft + ((d.season - 1) * getSeasonSpace(d));
       }
       return xPositions[d.year].position + innerLeft + marginLeft;
     })
@@ -309,10 +309,10 @@ async function init() {
           .interrupt()
           .transition()
           .duration(1000)
-          .attr("r", 7)
+          .attr("r", 5)
           .attr("cx", d => {
             if (!focusState) {
-              return xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d));
+              return xPositions[d.year].position + innerLeft + marginLeft + ((d.season - 1) * getSeasonSpace(d));
             }
             return xPositions[d.year].position + innerLeft + marginLeft;
           })
@@ -359,9 +359,9 @@ async function init() {
     const bpCy = (item.blueprintY / 100) * height;
     const bpImg = svg.append("image")
       .attr("class", `preview-${item.name} thumbs`)
-      .attr("x", bpCx - 75)
-      .attr("y", bpCy - 75)
-      .attr("width", "150")
+      .attr("x", bpCx - 93.75)
+      .attr("y", bpCy - 93.75)
+      .attr("width", "187.5")
       .attr("href", item.blueprintImg)
       .attr("preserveAspectRatio", "xMidYMid meet")
       .attr("pointer-events", "none");
@@ -375,20 +375,20 @@ async function init() {
       .attr("fill", "transparent")
       .on("mouseover", () => {
         bpImg.transition().duration(500)
-          .attr("x", bpCx - 93.75).attr("y", bpCy - 93.75)
-          .attr("width", "187.5");
-        highlightDots(item, "blue");
+          .attr("x", bpCx - 117.1875).attr("y", bpCy - 117.1875)
+          .attr("width", "234.375");
+        highlightDots(item, "rgb(0, 32, 191)");
       })
       .on("mouseout", () => {
         bpImg.transition().duration(500)
-          .attr("x", bpCx - 75).attr("y", bpCy - 75)
-          .attr("width", "150");
+          .attr("x", bpCx - 93.75).attr("y", bpCy - 93.75)
+          .attr("width", "187.5");
         if (!focusState) highlightDots(item, "white");
       })
       .on("click", () => {
         const firstYear = item.lifeCycles[0]?.points[0]?.year;
         if (firstYear) zoomOnItem(firstYear, item);
-        highlightDots(item, "blue");
+        highlightDots(item, "rgb(0, 32, 191)");
       });
 
     item.lifeCycles.forEach((lc, lcIndex) => {
@@ -397,16 +397,16 @@ async function init() {
       // per-point preview thumbnails — positioned at the dot's graph coordinates
       lc.points.forEach((pt, ptIndex) => {
         if (!pt.previewImg) return;
-        const dotCx = xPositions[pt.year].position + innerLeft + marginLeft + (pt.season * getSeasonSpace(pt));
+        const dotCx = xPositions[pt.year].position + innerLeft + marginLeft + ((pt.season - 1) * getSeasonSpace(pt));
         const dotCy = yScale(pt.category) + 8;
         const ptCx = dotCx + (pt.previewX ?? 0);
         const ptCy = dotCy + (pt.previewY ?? 0);
         const ptClass = `point-preview-${item.name}-${lcIndex}-${ptIndex}`;
         const ptImg = svg.append("image")
           .attr("class", `${ptClass} thumbs`)
-          .attr("x", ptCx - 75)
-          .attr("y", ptCy - 75)
-          .attr("width", "150")
+          .attr("x", ptCx - 93.75)
+          .attr("y", ptCy - 93.75)
+          .attr("width", "187.5")
           .attr("href", pt.previewImg)
           .attr("preserveAspectRatio", "xMidYMid meet")
           .attr("pointer-events", "none");
@@ -419,28 +419,30 @@ async function init() {
           .attr("height", 60)
           .attr("fill", "transparent")
           .on("mouseover", () => {
-            if (!pt.contentImg) return;
+            ptImg.transition().duration(500)
+              .attr("x", ptCx - 117.1875).attr("y", ptCy - 117.1875)
+              .attr("width", "234.375");
+            d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
+              .transition().duration(500).style("fill", "rgb(0, 32, 191)");
+            d3.select(`#circle-${item.name}-${lcIndex}-${ptIndex}`)
+              .transition().duration(500).attr("r", 8);
+          })
+          .on("mouseout", () => {
             ptImg.transition().duration(500)
               .attr("x", ptCx - 93.75).attr("y", ptCy - 93.75)
               .attr("width", "187.5");
-            d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
-              .transition().duration(500).style("fill", "blue");
-          })
-          .on("mouseout", () => {
-            if (!pt.contentImg) return;
-            ptImg.transition().duration(500)
-              .attr("x", ptCx - 75).attr("y", ptCy - 75)
-              .attr("width", "150");
             if (!focusState) {
               d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
                 .transition().duration(500).style("fill", "white");
             }
+            d3.select(`#circle-${item.name}-${lcIndex}-${ptIndex}`)
+              .transition().duration(500).attr("r", 5);
           })
           .on("click", () => {
             if (!pt.contentImg) return;
             zoomOnItem(pt.year, item, pt.contentImg);
             d3.select(`#left-dot-${pt.category.replace(/\s+/g, '-')}`)
-              .transition().duration(1000).style("fill", "blue");
+              .transition().duration(1000).style("fill", "rgb(0, 32, 191)");
           });
       });
 
@@ -455,10 +457,10 @@ async function init() {
         .on("click", () => {
           const firstYear = lc.points[0]?.year;
           if (firstYear) zoomOnItem(firstYear, item);
-          highlightDots(item, "blue");
+          highlightDots(item, "rgb(0, 32, 191)");
         })
         .on("mouseover", () => {
-          highlightDots(item, "blue");
+          highlightDots(item, "rgb(0, 32, 191)");
         })
         .on("mouseout", () => {
           if (!focusState) highlightDots(item, "white");
@@ -470,24 +472,25 @@ async function init() {
         .enter()
         .append("circle")
         .attr("class", `circles-${key}`)
-        .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft + (d.season * getSeasonSpace(d)))
+        .attr("id", (d, i) => `circle-${item.name}-${lcIndex}-${i}`)
+        .attr("cx", d => xPositions[d.year].position + innerLeft + marginLeft + ((d.season - 1) * getSeasonSpace(d)))
         .attr("cy", d => yScale(d.category) + 8)
-        .attr("r", 7)
+        .attr("r", 5)
         .attr("fill", "rgb(0, 0, 0)")
         .on("click", function (event, d) {
           if (!d.contentImg) return;
-          d3.select(this).interrupt().transition().duration(500).attr("r", 8);
+          d3.select(this).interrupt().transition().duration(500).attr("r", 5);
           zoomOnItem(d.year, item, d.contentImg);
           d3.select(`#left-dot-${d.category.replace(/\s+/g, '-')}`)
-            .transition().duration(1000).style("fill", "blue");
+            .transition().duration(1000).style("fill", "rgb(0, 32, 191)");
         })
         .on("mouseover", function (event, d) {
-          if (!sliding) d3.select(this).transition().duration(500).attr("r", 12);
+          if (!sliding) d3.select(this).transition().duration(500).attr("r", 8);
           d3.select(`#left-dot-${d.category.replace(/\s+/g, '-')}`)
-            .transition().duration(500).style("fill", "blue");
+            .transition().duration(500).style("fill", "rgb(0, 32, 191)");
         })
         .on("mouseout", function (event, d) {
-          if (!sliding) d3.select(this).transition().duration(500).attr("r", 8);
+          if (!sliding) d3.select(this).transition().duration(500).attr("r", 5);
           if (!focusState) {
             d3.select(`#left-dot-${d.category.replace(/\s+/g, '-')}`)
               .transition().duration(500).style("fill", "white");
@@ -546,4 +549,12 @@ async function init() {
   container.append(svg.node());
 }
 
-init();
+if (window.innerWidth < 1000) {
+  const msg = document.createElement('div');
+  msg.textContent = 'sorry, this only works on widescreens';
+  msg.style.cssText = 'display:flex;align-items:center;justify-content:center;width:100%;height:100%;font-family:sans-serif;font-size:1rem;text-align:center;padding:2rem;';
+  container.style.cssText = 'width:100vw;height:100vh;';
+  container.appendChild(msg);
+} else {
+  init();
+}
