@@ -37,6 +37,24 @@ async function fetchStructures() {
   return result;
 }
 
+const MAJOR_EVENT_QUERY = encodeURIComponent(`*[_type == "majorEvent"] | order(year asc, season asc) {
+  _id,
+  title,
+  year,
+  season,
+  content[] {
+    _type,
+    asset-> { url }
+  }
+}`);
+
+async function fetchMajorEvents() {
+  const url = `https://${SANITY_PROJECT_ID}.apicdn.sanity.io/v${SANITY_API_VERSION}/data/query/${SANITY_DATASET}?query=${MAJOR_EVENT_QUERY}`;
+  const response = await fetch(url);
+  const { result } = await response.json();
+  return result;
+}
+
 function transformSanityData(structures) {
   return structures.map(s => ({
     name: s.name,
@@ -56,6 +74,18 @@ function transformSanityData(structures) {
     blueprintX: s.blueprintImage?.x ?? 0,
     blueprintY: s.blueprintImage?.y ?? 0,
     displayImg: s.displayImage?.asset?.url ?? "",
+  }));
+}
+
+function transformMajorEvents(events) {
+  return (events || []).map(e => ({
+    id: e._id,
+    title: e.title,
+    year: e.year,
+    season: e.season ?? 1,
+    contentItems: (e.content || [])
+      .filter(item => item.asset?.url)
+      .map(item => ({ type: item._type, url: item.asset.url })),
   }));
 }
 
@@ -107,13 +137,21 @@ const spacerLabels = {
 };
 
 async function init() {
-  const structures = await fetchStructures();
+  const [structures, majorEventsRaw] = await Promise.all([
+    fetchStructures(),
+    fetchMajorEvents(),
+  ]);
   const theHouses = transformSanityData(structures);
+  const majorEvents = transformMajorEvents(majorEventsRaw);
 
   const svg = d3.create("svg")
     .attr("class", "svg-d3")
     .attr("width", width)
     .attr("height", height);
+
+  // attach immediately so getBBox() (used for major-event label backgrounds)
+  // returns accurate measurements in browsers that require a live layout tree
+  container.append(svg.node());
 
   let cumulativePosition = innerLeft;
 
@@ -139,6 +177,121 @@ async function init() {
     if (targetYear === 0) return defaultWidth / 5;
     return restWidth / 5;
   }
+
+  function majorEventX(evt) {
+    const xPos = xPositions[evt.year];
+    if (!xPos) return null;
+    return xPos.position + innerLeft + marginLeft + ((evt.season - 1) * getSeasonSpace(evt));
+  }
+
+  const majorEventLabelGap = 6;
+
+  function majorEventLabelAttrs(cx) {
+    const isLeftOfCenter = cx < width / 2;
+    return {
+      x: isLeftOfCenter ? cx + majorEventLabelGap : cx - majorEventLabelGap,
+      anchor: isLeftOfCenter ? "start" : "end",
+    };
+  }
+
+  // major events — global markers spanning the full chart height, not mapped
+  // to the y-axis. Drawn first so they sit on the bottom-most z-layer.
+  const majorEventColor = "rgb(0, 32, 191)";
+  const majorEventTopY = marginTop;
+  const majorEventBottomY = height - marginBottom;
+  const majorEventDotTopY = majorEventTopY - 13;
+  const majorEventDotBottomY = majorEventBottomY + 27;
+  const majorEventLabelPadding = 5;
+  const majorEventLabelBg = "lightgray";
+
+  const majorEventsGroup = svg.append("g")
+    .attr("class", "major-events")
+    .attr("transform", "translate(0,-5)");
+
+  const majorEventLabelWidths = {};
+
+  function buildMajorEventLabel(key, x, y, anchor, title) {
+    const group = majorEventsGroup.append("g")
+      .attr("class", `${key} major-event-label`)
+      .style("opacity", 0)
+      .style("pointer-events", "none");
+
+    const text = group.append("text")
+      .attr("x", x)
+      .attr("y", y)
+      .attr("text-anchor", anchor)
+      .attr("dominant-baseline", "middle")
+      .attr("font-size", "11px")
+      .style("fill", majorEventColor)
+      .text(title);
+
+    const bbox = text.node().getBBox();
+    majorEventLabelWidths[key] = bbox.width;
+
+    group.insert("rect", "text")
+      .attr("x", bbox.x - majorEventLabelPadding)
+      .attr("y", bbox.y - majorEventLabelPadding)
+      .attr("width", bbox.width + majorEventLabelPadding * 2)
+      .attr("height", bbox.height + majorEventLabelPadding * 2)
+      .style("fill", majorEventLabelBg);
+
+    return group;
+  }
+
+  majorEvents.forEach((evt, i) => {
+    const cx = majorEventX(evt);
+    if (cx === null) return;
+
+    const labelAttrs = majorEventLabelAttrs(cx);
+
+    majorEventsGroup.append("line")
+      .attr("class", `major-event-line-${i}`)
+      .attr("x1", cx)
+      .attr("y1", majorEventDotTopY)
+      .attr("x2", cx)
+      .attr("y2", majorEventDotBottomY)
+      .style("stroke", majorEventColor)
+      .style("stroke-width", 1)
+      .style("stroke-dasharray", "10,3,2,3");
+
+    const topLabelGroup = buildMajorEventLabel(
+      `major-event-label-top-${i}`, labelAttrs.x, majorEventDotTopY, labelAttrs.anchor, evt.title
+    );
+    const bottomLabelGroup = buildMajorEventLabel(
+      `major-event-label-bottom-${i}`, labelAttrs.x, majorEventDotBottomY, labelAttrs.anchor, evt.title
+    );
+
+    majorEventsGroup.append("circle")
+      .attr("class", `major-event-dot-top-${i}`)
+      .attr("cx", cx)
+      .attr("cy", majorEventDotTopY)
+      .attr("r", 5)
+      .style("fill", majorEventColor)
+      .style("cursor", "pointer")
+      .on("mouseover", () => topLabelGroup.transition().duration(200).style("opacity", 1))
+      .on("mouseout", () => topLabelGroup.transition().duration(200).style("opacity", 0))
+      .on("click", () => {
+        topLabelGroup.transition().duration(200).style("opacity", 1);
+        openMajorEventContent(evt);
+      });
+
+    majorEventsGroup.append("circle")
+      .attr("class", `major-event-dot-bottom-${i}`)
+      .attr("cx", cx)
+      .attr("cy", majorEventDotBottomY)
+      .attr("r", 5)
+      .style("fill", majorEventColor)
+      .style("cursor", "pointer")
+      .on("mouseover", () => bottomLabelGroup.transition().duration(200).style("opacity", 1))
+      .on("mouseout", () => bottomLabelGroup.transition().duration(200).style("opacity", 0))
+      .on("click", () => {
+        bottomLabelGroup.transition().duration(200).style("opacity", 1);
+        openMajorEventContent(evt);
+      });
+  });
+
+  // keep label groups above every major-event dot, regardless of draw order
+  majorEventsGroup.selectAll(".major-event-label").raise();
 
   // x axis — bottom
   const xAxis = svg.append("g")
@@ -300,6 +453,37 @@ async function init() {
         .attr("transform", d => `translate(${d.position + 1.5 * getSeasonSpace(d)}, 11) rotate(0)`);
     }
 
+    majorEvents.forEach((evt, i) => {
+      const cx = majorEventX(evt);
+      if (cx === null) return;
+      const labelAttrs = majorEventLabelAttrs(cx);
+      svg.select(`.major-event-line-${i}`)
+        .transition().duration(1000)
+        .attr("x1", cx).attr("x2", cx);
+      svg.select(`.major-event-dot-top-${i}`)
+        .transition().duration(1000)
+        .attr("cx", cx);
+      svg.select(`.major-event-dot-bottom-${i}`)
+        .transition().duration(1000)
+        .attr("cx", cx);
+
+      ["top", "bottom"].forEach(pos => {
+        const key = `major-event-label-${pos}-${i}`;
+        const labelWidth = majorEventLabelWidths[key] ?? 0;
+        const rectX = labelAttrs.anchor === "start"
+          ? labelAttrs.x - majorEventLabelPadding
+          : labelAttrs.x - labelWidth - majorEventLabelPadding;
+        const group = svg.select(`.${key}`);
+        group.select("text")
+          .attr("text-anchor", labelAttrs.anchor)
+          .transition().duration(1000)
+          .attr("x", labelAttrs.x);
+        group.select("rect")
+          .transition().duration(1000)
+          .attr("x", rectX);
+      });
+    });
+
     dotData = Object.values(xPositions).flatMap(item =>
       yAxisCat.flatMap(cat =>
         cat.startsWith("_spacer") ? [] : d3.range(4).map(index => ({
@@ -355,6 +539,10 @@ async function init() {
       .transition().duration(1000)
       .attr("opacity", 0)
       .attr("display", "none");
+    svg.select(".story-content")
+      .transition().duration(1000)
+      .style("opacity", 0)
+      .on("end", function () { d3.select(this).style("display", "none"); });
     d3.selectAll(".left-dot")
       .transition().duration(1000)
       .style("fill", "white");
@@ -374,6 +562,41 @@ async function init() {
         .attr("preserveAspectRatio", "xMidYMid meet")
         .transition().duration(1000)
         .attr("opacity", 1);
+    } else {
+      closeZoom();
+    }
+  }
+
+  function openMajorEventContent(evt) {
+    if (!evt.contentItems.length) return;
+    if (!focusState) {
+      focusState = true;
+      reDrawElements(evt.year);
+      const xPos = xPositions[evt.year].position;
+
+      const storyContentScroll = svg.select(".story-content-scroll");
+      storyContentScroll.selectAll("*").remove();
+      evt.contentItems.forEach(item => {
+        if (item.type === "file") {
+          storyContentScroll.append("xhtml:iframe")
+            .attr("src", item.url)
+            .style("width", "100%")
+            .style("height", `${height}px`)
+            .style("border", "none")
+            .style("display", "block");
+        } else {
+          storyContentScroll.append("xhtml:img")
+            .attr("src", item.url)
+            .style("width", "100%")
+            .style("display", "block");
+        }
+      });
+
+      svg.select(".story-content")
+        .attr("x", xPos + innerLeft + marginLeft)
+        .style("display", "block")
+        .transition().duration(1000)
+        .style("opacity", 1);
     } else {
       closeZoom();
     }
@@ -539,6 +762,25 @@ async function init() {
     .attr("preserveAspectRatio", "xMidYMid meet")
     .on("click", () => { if (focusState) closeZoom(); });
 
+  // scrollable content viewer for major events with multiple photos/PDFs
+  const storyContent = svg.append("foreignObject")
+    .attr("class", "story-content")
+    .attr("x", 0)
+    .attr("y", 0)
+    .attr("width", bigGap)
+    .attr("height", height)
+    .style("display", "none")
+    .style("opacity", 0);
+
+  storyContent.append("xhtml:div")
+    .attr("class", "story-content-scroll")
+    .style("width", "100%")
+    .style("height", "100%")
+    .style("overflow-y", "auto")
+    .style("background", "white")
+    .style("cursor", "pointer")
+    .on("click", () => { if (focusState) closeZoom(); });
+
   // spacer label decorations
   yAxisLabelsGroup.selectAll("text").each(function () {
     if (this.__data__.startsWith("_spacer")) {
@@ -558,22 +800,23 @@ async function init() {
         .style("stroke", "black")
         .style("stroke-width", 0.5);
 
-      d3.select(this.parentNode)
-        .insert("line", "rect")
-        .attr("x1", "4rem")
-        .attr("y1", 0)
-        .attr("x2", width - innerLeft * 5)
-        .attr("y2", 0)
-        .style("stroke", "black")
-        .style("stroke-width", 1)
-        .style("stroke-dasharray", "5, 8");
+      if (this.__data__ !== "_spacer1") {
+        d3.select(this.parentNode)
+          .insert("line", "rect")
+          .attr("x1", "4rem")
+          .attr("y1", 0)
+          .attr("x2", width - innerLeft * 5)
+          .attr("y2", 0)
+          .style("stroke", "black")
+          .style("stroke-width", 1)
+          .style("stroke-dasharray", "5, 8");
+      }
     }
   });
 
   svg.selectAll(".thumbs").raise();
   svg.select(".story-image").raise();
-
-  container.append(svg.node());
+  svg.select(".story-content").raise();
 }
 
 if (window.innerWidth < 1000) {
