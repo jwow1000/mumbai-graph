@@ -153,6 +153,11 @@ async function init() {
   // returns accurate measurements in browsers that require a live layout tree
   container.append(svg.node());
 
+  // wait for fonts to finish loading before measuring label text — otherwise
+  // getBBox() measures against the fallback font, which is often narrower
+  // than the real one, leaving the label background too narrow
+  await document.fonts.ready;
+
   let cumulativePosition = innerLeft;
 
   const restOfGraph = (width - (innerLeft + marginLeft + marginRight)) - bigGap;
@@ -221,7 +226,7 @@ async function init() {
       .attr("y", y)
       .attr("text-anchor", anchor)
       .attr("dominant-baseline", "middle")
-      .attr("font-size", "11px")
+      .attr("font-size", "14px")
       .style("fill", majorEventColor)
       .text(title);
 
@@ -772,13 +777,39 @@ async function init() {
     .style("display", "none")
     .style("opacity", 0);
 
-  storyContent.append("xhtml:div")
+  const storyContentWrap = storyContent.append("xhtml:div")
+    .style("position", "relative")
+    .style("width", "100%")
+    .style("height", "100%");
+
+  storyContentWrap.append("xhtml:div")
     .attr("class", "story-content-scroll")
     .style("width", "100%")
     .style("height", "100%")
     .style("overflow-y", "auto")
     .style("background", "white")
     .style("cursor", "pointer")
+    .on("click", () => { if (focusState) closeZoom(); });
+
+  // close button — sits above the iframe/PDF content so it can always be clicked,
+  // since clicks inside an iframe never bubble up to the scroll container's handler
+  storyContentWrap.append("xhtml:div")
+    .attr("class", "story-content-close")
+    .style("position", "absolute")
+    .style("top", "12px")
+    .style("left", "12px")
+    .style("z-index", "10")
+    .style("width", "32px")
+    .style("height", "32px")
+    .style("border-radius", "50%")
+    .style("background", "rgba(0, 0, 0, 0.6)")
+    .style("color", "white")
+    .style("font-size", "18px")
+    .style("line-height", "32px")
+    .style("text-align", "center")
+    .style("cursor", "pointer")
+    .style("user-select", "none")
+    .text("×")
     .on("click", () => { if (focusState) closeZoom(); });
 
   // spacer label decorations
